@@ -1,0 +1,24 @@
+Thank you for downloading Thermostat.
+
+REQUIREMENTS:
+
+Maven (it will download all the java dependencies for you)
+
+MongoDB
+http://www.mongodb.org/
+
+
+BUILDING THERMOSTAT:
+
+1. Run "mvn clean package". All tests should pass and the build should succeed.
+   Requires a graphical environment for the ui tests.
+2. The resultant Thermostat system can now be found under the directory
+   distribution/target.
+
+RUNNING THERMOSTAT:
+
+1. To start the agent and the db:
+   bin/thermostat-service --start
+
+2. To start the client:
+   bin/thermostat-client-gui
