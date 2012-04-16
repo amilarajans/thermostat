@@ -40,17 +40,19 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import net.java.openjdk.cacio.ctc.junit.CacioFESTRunner;
 
 import org.fest.swing.annotation.GUITest;
+import org.fest.swing.edt.FailOnThreadViolationRepaintManager;
 import org.fest.swing.edt.GuiActionRunner;
 import org.fest.swing.edt.GuiTask;
 import org.fest.swing.fixture.FrameFixture;
 import org.fest.swing.fixture.JMenuItemFixture;
 import org.fest.swing.fixture.JTextComponentFixture;
 import org.fest.swing.fixture.JTreeFixture;
-import org.fest.swing.junit.v4_5.runner.GUITestRunner;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -59,20 +61,31 @@ import com.redhat.thermostat.client.MainView;
 import com.redhat.thermostat.common.ActionEvent;
 import com.redhat.thermostat.common.ActionListener;
 
-@RunWith(GUITestRunner.class)
+@RunWith(CacioFESTRunner.class)
 public class MainWindowTest {
 
     private FrameFixture frameFixture;
     private MainWindow window;
     private ActionListener<MainView.Action> l;
 
+    @BeforeClass
+    public static void setUpOnce() {
+        FailOnThreadViolationRepaintManager.install();
+    }
+
     @SuppressWarnings("unchecked") // mock(ActionListener.class)
     @Before
     public void setUp() {
 
-        window = new MainWindow();
-        l = mock(ActionListener.class);
-        window.addActionListener(l);
+        GuiActionRunner.execute(new GuiTask() {
+            
+            @Override
+            protected void executeInEDT() throws Throwable {
+                window = new MainWindow();
+                l = mock(ActionListener.class);
+                window.addActionListener(l);
+            }
+        });
 
         frameFixture = new FrameFixture(window);
     }
@@ -119,13 +132,7 @@ public class MainWindowTest {
     @Category(GUITest.class)
     @Test
     public void verifyShowMainWindowShowsWindow() {
-        GuiActionRunner.execute(new GuiTask() {
-
-            @Override
-            protected void executeInEDT() throws Throwable {
-                window.showMainWindow();
-            }
-        });
+        window.showMainWindow();
         frameFixture.requireVisible();
     }
 
@@ -191,8 +198,8 @@ public class MainWindowTest {
         frameFixture.show();
         JTextComponentFixture hostVMTreeFilterField = frameFixture.textBox("hostVMTreeFilter");
         hostVMTreeFilterField.enterText("test");
-
-        assertEquals("test", window.getHostVmTreeFilter());
+        String actual = window.getHostVmTreeFilter();
+        assertEquals("test", actual);
     }
 
     @Category(GUITest.class)
