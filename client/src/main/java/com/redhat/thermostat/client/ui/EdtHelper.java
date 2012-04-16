@@ -34,46 +34,61 @@
  * to do so, delete this exception statement from your version.
  */
 
-package com.redhat.thermostat.tools;
+package com.redhat.thermostat.client.ui;
 
-import static org.junit.Assert.*;
+import java.awt.EventQueue;
+import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.Callable;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+public class EdtHelper {
 
-public class ThermostatServiceTest {
+    private static class CallableException extends RuntimeException {
 
-    private ThermostatService thermostatService;
-
-    @Before
-    public void setUp() {
-        thermostatService = new ThermostatService();
+        private CallableException(Exception ex) {
+            super(ex);
+        }
+        
     }
 
-    @After
-    public void tearDown() {
-        thermostatService = null;
+    private static class CallableWrapper<T> implements Runnable {
+
+        private Callable<T> callable;
+        private T result;
+
+        private CallableWrapper(Callable<T> c) {
+            callable = c;
+        }
+
+        @Override
+        public void run() {
+            try {
+                result = callable.call();
+            } catch (Exception ex) {
+                throw new CallableException(ex);
+            }
+        }
+
+        private T getResult() {
+            return result;
+        }
     }
 
-    @Test
-    public void testName() {
-        String name = thermostatService.getName();
-        assertEquals("service", name);
+    public void callAndWait(Runnable r) throws InvocationTargetException, InterruptedException {
+        if (EventQueue.isDispatchThread()) {
+            try {
+                r.run();
+            } catch (Exception ex) {
+                throw new InvocationTargetException(ex);
+            }
+        } else {
+            EventQueue.invokeAndWait(r);
+        }
     }
 
-    @Test
-    public void testDescription() {
-        String desc = thermostatService.getDescription();
-        assertEquals("starts and stops the thermostat storage and agent", desc);
+    public <T> T callAndWait(Callable<T> c) throws InvocationTargetException, InterruptedException {
+        CallableWrapper<T> w = new CallableWrapper<>(c);
+        callAndWait(w);
+        return w.getResult();
     }
 
-    @Test
-    public void testUsage() {
-        String usage = thermostatService.getUsage();
-        assertEquals("service start|stop\n\n"
-                + "starts and stops the thermostat storage and agent" + "\n\n\t"
-                + "With argument 'start', start the storage amd agent\n\t"
-                + "With argument 'stop', stop the storage and agent.\n", usage);
-    }
 }
