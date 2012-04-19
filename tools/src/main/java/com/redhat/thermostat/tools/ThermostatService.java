@@ -36,10 +36,16 @@
 
 package com.redhat.thermostat.tools;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 import com.redhat.thermostat.agent.AgentApplication;
+import com.redhat.thermostat.cli.ArgumentSpec;
 import com.redhat.thermostat.cli.CommandContext;
 import com.redhat.thermostat.cli.CommandContextFactory;
 import com.redhat.thermostat.cli.CommandException;
+import com.redhat.thermostat.cli.SimpleArgumentSpec;
+import com.redhat.thermostat.cli.SimpleArguments;
 import com.redhat.thermostat.common.ActionEvent;
 import com.redhat.thermostat.common.ActionListener;
 import com.redhat.thermostat.common.ActionNotifier;
@@ -59,10 +65,7 @@ public class ThermostatService extends BasicCommand implements ActionListener<Ap
     // TODO: Use LocaleResources for i18n-ized strings.
     private static final String DESCRIPTION = "starts and stops the thermostat storage and agent";
 
-    private static final String USAGE = "service start|stop\n\n"
-                + DESCRIPTION + "\n\n\t"
-                + "With argument 'start', start the storage amd agent\n\t"
-                + "With argument 'stop', stop the storage and agent.\n";
+    private static final String USAGE = DESCRIPTION;
 
     private BasicCommand database;
     private AgentApplication agent;
@@ -123,7 +126,8 @@ public class ThermostatService extends BasicCommand implements ActionListener<Ap
                 });
                 
                 String dbUrl = database.getConfiguration().getDBConnectionString();
-                String[] args = new String[] { "--dbUrl", dbUrl };
+                SimpleArguments args = new SimpleArguments();
+                args.addArgument("dbUrl", dbUrl);
                 try {
                     System.err.println("starting agent now...");
                     agent.run(CommandContextFactory.getInstance().createContext(args));
@@ -155,5 +159,12 @@ public class ThermostatService extends BasicCommand implements ActionListener<Ap
     @Override
     public String getUsage() {
         return USAGE;
+    }
+
+    @Override
+    public Collection<ArgumentSpec> getAcceptedArguments() {
+        ArgumentSpec start = new SimpleArgumentSpec("start", "start the database and agent");
+        ArgumentSpec stop = new SimpleArgumentSpec("stop", "stop the database and agent");
+        return Arrays.asList(start, stop);
     }
 }
