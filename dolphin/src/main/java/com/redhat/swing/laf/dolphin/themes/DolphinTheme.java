@@ -82,9 +82,24 @@ public abstract class DolphinTheme extends OceanTheme {
         System.setProperty("dolphin.tree.nofill", String.valueOf(value));
     }
 
+    public boolean getTabPaneKeepBackgroundColor() {
+        return Boolean.getBoolean("dolphin.tab.keepbg");
+    }
+    
+    public void setTabPaneKeepBackgroundColor(boolean value) {
+        System.setProperty("dolphin.tab.keepbg", String.valueOf(value));
+    }
+    
     public abstract ColorUIResource getwindowBackgroundColor();
     
     public abstract ColorUIResource getMenuBackgroundColor();
     public abstract ColorUIResource getMenuForegroundColor();
+    public abstract ColorUIResource getTabAreaBackground();
+    public abstract ColorUIResource getTabAreaForeground();
+
+    public abstract ColorUIResource getTabTopGradient();
+    public abstract ColorUIResource getTabBottomGradient();
     
+    public abstract ColorUIResource getUnselectedTabTopGradient();
+    public abstract ColorUIResource getUnselectedTabBottomGradient();
 }
