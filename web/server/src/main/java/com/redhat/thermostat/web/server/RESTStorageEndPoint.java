@@ -1,6 +1,8 @@
 package com.redhat.thermostat.web.server;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -8,13 +10,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileItemFactory;
+import org.apache.commons.fileupload.FileUploadException;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
+import com.redhat.thermostat.common.model.AgentIdPojo;
 import com.redhat.thermostat.common.model.Pojo;
 import com.redhat.thermostat.common.storage.Category;
 import com.redhat.thermostat.common.storage.Cursor;
@@ -27,6 +38,7 @@ import com.redhat.thermostat.common.storage.Update;
 import com.redhat.thermostat.web.common.Qualifier;
 import com.redhat.thermostat.web.common.RESTQuery;
 import com.redhat.thermostat.web.common.StorageWrapper;
+import com.redhat.thermostat.web.common.ThermostatGSONConverter;
 import com.redhat.thermostat.web.common.WebInsert;
 import com.redhat.thermostat.web.common.WebRemove;
 import com.redhat.thermostat.web.common.WebUpdate;
@@ -43,13 +55,13 @@ public class RESTStorageEndPoint extends HttpServlet {
     private Map<Integer, Category> categories;
 
     public void init() {
-        gson = new Gson();
+        gson = new GsonBuilder().registerTypeHierarchyAdapter(Pojo.class, new ThermostatGSONConverter()).create();
         categoryIds = new HashMap<>();
         categories = new HashMap<>();
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
         if (storage == null) {
             storage = StorageWrapper.getStorage();
         }
@@ -70,7 +82,56 @@ public class RESTStorageEndPoint extends HttpServlet {
             updatePojo(req, resp);
         } else if (cmd.equals("get-count")) {
             getCount(req, resp);
+        } else if (cmd.equals("save-file")) {
+            saveFile(req, resp);
+        } else if (cmd.equals("load-file")) {
+            loadFile(req, resp);
+        } else if (cmd.equals("purge")) {
+            purge(req, resp);
         }
+    }
+
+    private void purge(HttpServletRequest req, HttpServletResponse resp) {
+        storage.purge();
+        resp.setStatus(HttpServletResponse.SC_OK);
+    }
+
+    private void loadFile(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String name = req.getParameter("file");
+        InputStream data = storage.loadFile(name);
+        OutputStream out = resp.getOutputStream();
+        byte[] buffer = new byte[512];
+        int read = 0;
+        while (read >= 0) {
+            read = data.read(buffer);
+            if (read > 0) {
+                out.write(buffer, 0, read);
+            }
+        }
+    }
+
+    private void saveFile(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        boolean isMultipart = ServletFileUpload.isMultipartContent(req);
+        if (! isMultipart) {
+            throw new ServletException("expected multipart message");
+        }
+        FileItemFactory factory = new DiskFileItemFactory();
+        ServletFileUpload upload = new ServletFileUpload(factory);
+        try {
+            @SuppressWarnings("unchecked")
+            List<FileItem> items = upload.parseRequest(req);
+            for (FileItem item : items) {
+                String fieldName = item.getFieldName();
+                if (fieldName.equals("file")) {
+                    String name = item.getName();
+                    InputStream in = item.getInputStream();
+                    storage.saveFile(name, in);
+                }
+            }
+        } catch (FileUploadException ex) {
+            throw new ServletException(ex);
+        }
+        
     }
 
     private void getCount(HttpServletRequest req, HttpServletResponse resp) {
@@ -116,9 +177,9 @@ public class RESTStorageEndPoint extends HttpServlet {
         try {
             String insertParam = req.getParameter("insert");
             WebInsert insert = gson.fromJson(insertParam, WebInsert.class);
-            Class<? extends Pojo> pojoCls = (Class<? extends Pojo>) Class.forName(insert.getPojoClass());
+            Class<? extends AgentIdPojo> pojoCls = (Class<? extends AgentIdPojo>) Class.forName(insert.getPojoClass());
             String pojoParam = req.getParameter("pojo");
-            Pojo pojo = gson.fromJson(pojoParam, pojoCls);
+            AgentIdPojo pojo = gson.fromJson(pojoParam, pojoCls);
             int categoryId = insert.getCategoryId();
             Category category = getCategoryFromId(categoryId);
             storage.putPojo(category, insert.isReplace(), pojo);
@@ -155,17 +216,22 @@ public class RESTStorageEndPoint extends HttpServlet {
                 assert (qualifier.getCriteria() == Criteria.EQUALS);
                 targetUpdate = targetUpdate.where(qualifier.getKey(), qualifier.getValue());
             }
-            String valuesParam = req.getParameter("values");
-            JsonParser parser = new JsonParser();
-            JsonArray jsonArray = parser.parse(valuesParam).getAsJsonArray();
             List<WebUpdate.UpdateValue> updates = update.getUpdates();
-            int index = 0;
-            for (WebUpdate.UpdateValue updateValue : updates) {
-                Class valueClass = Class.forName(updateValue.getValueClass());
-                Object value = gson.fromJson(jsonArray.get(index), valueClass);
-                index++;
-                Key key = updateValue.getKey();
-                targetUpdate.set(key, value);
+            if (updates != null) {
+                String valuesParam = req.getParameter("values");
+                JsonParser parser = new JsonParser();
+                JsonArray jsonArray = parser.parse(valuesParam)
+                        .getAsJsonArray();
+                int index = 0;
+                for (WebUpdate.UpdateValue updateValue : updates) {
+                    Class valueClass = Class.forName(updateValue
+                            .getValueClass());
+                    Object value = gson.fromJson(jsonArray.get(index),
+                            valueClass);
+                    index++;
+                    Key key = updateValue.getKey();
+                    targetUpdate.set(key, value);
+                }
             }
             storage.updatePojo(targetUpdate);
             resp.setStatus(HttpServletResponse.SC_OK);
