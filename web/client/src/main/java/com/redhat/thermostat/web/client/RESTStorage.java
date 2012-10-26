@@ -53,7 +53,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.content.InputStreamBody;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
+
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.redhat.thermostat.common.model.AgentIdPojo;
 import com.redhat.thermostat.common.model.Pojo;
 import com.redhat.thermostat.common.storage.Category;
 import com.redhat.thermostat.common.storage.Connection;
@@ -63,6 +76,7 @@ import com.redhat.thermostat.common.storage.Remove;
 import com.redhat.thermostat.common.storage.Storage;
 import com.redhat.thermostat.common.storage.Update;
 import com.redhat.thermostat.web.common.RESTQuery;
+import com.redhat.thermostat.web.common.ThermostatGSONConverter;
 import com.redhat.thermostat.web.common.WebInsert;
 import com.redhat.thermostat.web.common.WebRemove;
 import com.redhat.thermostat.web.common.WebUpdate;
@@ -94,10 +108,12 @@ public class RESTStorage extends Storage {
     private UUID agentId;
 
     private Map<Category, Integer> categoryIds;
+    private Gson gson;
 
     public RESTStorage() {
         endpoint = "http://localhost:8082";
         categoryIds = new HashMap<>();
+        gson = new GsonBuilder().registerTypeHierarchyAdapter(Pojo.class, new ThermostatGSONConverter()).create();
     }
 
     @Override
@@ -111,7 +127,6 @@ public class RESTStorage extends Storage {
             conn.setDoInput(true);
             conn.setRequestMethod("POST");
             OutputStream out = conn.getOutputStream();
-            Gson gson = new Gson();
             OutputStreamWriter writer = new OutputStreamWriter(out);
             writer.write("name=");
             writer.write(URLEncoder.encode(category.getName(), enc));
@@ -153,7 +168,6 @@ public class RESTStorage extends Storage {
             conn.setDoOutput(true);
             conn.setRequestMethod("POST");
             OutputStream out = conn.getOutputStream();
-            Gson gson = new Gson();
             OutputStreamWriter writer = new OutputStreamWriter(out);
             ((RESTQuery) query).setResultClassName(resultClass.getName());
             gson.toJson(query, writer);
@@ -177,7 +191,6 @@ public class RESTStorage extends Storage {
             conn.setDoOutput(true);
             conn.setRequestMethod("POST");
             OutputStream out = conn.getOutputStream();
-            Gson gson = new Gson();
             OutputStreamWriter writer = new OutputStreamWriter(out);
             gson.toJson(query, writer);
             writer.flush();
@@ -209,7 +222,6 @@ public class RESTStorage extends Storage {
             conn.setDoOutput(true);
             conn.setRequestMethod("POST");
             OutputStream out = conn.getOutputStream();
-            Gson gson = new Gson();
             OutputStreamWriter writer = new OutputStreamWriter(out);
             writer.write("category=");
             gson.toJson(categoryIds.get(category), writer);
@@ -225,19 +237,38 @@ public class RESTStorage extends Storage {
     }
 
     @Override
-    public InputStream loadFile(String arg0) {
-        // TODO Auto-generated method stub
-        return null;
+    public InputStream loadFile(String name) {
+        try {
+            HttpClient httpClient = new DefaultHttpClient();
+            HttpPost httpPost = new HttpPost(endpoint + "/load-file");
+            List<NameValuePair> formparams = new ArrayList<NameValuePair>();
+            formparams.add(new BasicNameValuePair("file", name));
+            UrlEncodedFormEntity entity = new UrlEncodedFormEntity(formparams, "UTF-8");
+            httpPost.setEntity(entity);
+            HttpResponse response = httpClient.execute(httpPost);
+            return response.getEntity().getContent();
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @Override
     public void purge() {
-        // TODO Auto-generated method stub
-
+        try {
+            HttpClient httpClient = new DefaultHttpClient();
+            HttpPost httpPost = new HttpPost(endpoint + "/purge");
+            HttpResponse response = httpClient.execute(httpPost);
+            int status = response.getStatusLine().getStatusCode();
+            if (status != 200) {
+                throw new IOException("Server returned status: " + status);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @Override
-    public void putPojo(Category category, boolean replace, Pojo pojo) {
+    public void putPojo(Category category, boolean replace, AgentIdPojo pojo) {
         // TODO: This logic should probably be moved elsewhere. I.e. out of the Storage API.
         if (pojo.getAgentId() == null) {
             pojo.setAgentId(getAgentId());
@@ -251,7 +282,6 @@ public class RESTStorage extends Storage {
             conn.setDoInput(true);
             conn.setRequestMethod("POST");
             OutputStream out = conn.getOutputStream();
-            Gson gson = new Gson();
             OutputStreamWriter writer = new OutputStreamWriter(out);
             writer.write("insert=");
             writer.write(URLEncoder.encode(gson.toJson(insert), "UTF-8"));
@@ -279,7 +309,6 @@ public class RESTStorage extends Storage {
             conn.setDoOutput(true);
             conn.setRequestMethod("POST");
             OutputStream out = conn.getOutputStream();
-            Gson gson = new Gson();
             OutputStreamWriter writer = new OutputStreamWriter(out);
             writer.write("remove=");
             writer.write(URLEncoder.encode(gson.toJson(remove), "UTF-8"));
@@ -291,9 +320,22 @@ public class RESTStorage extends Storage {
     }
 
     @Override
-    public void saveFile(String arg0, InputStream arg1) {
-        // TODO Auto-generated method stub
-
+    public void saveFile(String name, InputStream in) {
+        try {
+            HttpClient httpClient = new DefaultHttpClient();
+            HttpPost httpPost = new HttpPost(endpoint + "/save-file");
+            InputStreamBody body = new InputStreamBody(in, name);
+            MultipartEntity entity = new MultipartEntity();
+            entity.addPart("file", body);
+            httpPost.setEntity(entity);
+            HttpResponse response = httpClient.execute(httpPost);
+            StatusLine status = response.getStatusLine();
+            if (status.getStatusCode() != 200) {
+                throw new IOException("Server returned status: " + status);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @Override
@@ -311,7 +353,6 @@ public class RESTStorage extends Storage {
             conn.setDoInput(true);
             conn.setRequestMethod("POST");
             OutputStream out = conn.getOutputStream();
-            Gson gson = new Gson();
             OutputStreamWriter writer = new OutputStreamWriter(out);
             writer.write("update=");
             writer.write(URLEncoder.encode(gson.toJson(webUp), "UTF-8"));
