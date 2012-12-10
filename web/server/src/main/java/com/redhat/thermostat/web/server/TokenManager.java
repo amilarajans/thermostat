@@ -34,44 +34,63 @@
  * to do so, delete this exception statement from your version.
  */
 
-package com.redhat.thermostat.common.command;
 
-public class Response implements Message {
+package com.redhat.thermostat.web.server;
 
-    // TODO add parameter support to provide more information in some of these types.
-    public enum ResponseType implements MessageType {
-        /** Request has been acknowledged and completed agent-side */
-        OK,
+import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
-        /** Request has been acknowledged and refused agent-side. */
-        NOK,
+class TokenManager {
 
-        /**
-         * Request has been acknowledged, but no action deemed necessary
-         * agent-side.
-         */
-        NOOP,
+    private static final int TOKEN_LENGTH = 256;
 
-        /**
-         * An error occurred. The status of the request is not known.
-         */
-        ERROR,
+    private SecureRandom random = new SecureRandom();
 
-	/**
-         * When authentication fails in SecureStorage.
-	 */
-	AUTH_FAILED;
+    private Map<String,byte[]> tokens = Collections.synchronizedMap(new HashMap<String,byte[]>());
+
+    // Maybe use a ScheduledExecutorService if this turns out to not scale well enough.
+    private Timer timer = new Timer();
+
+    private int timeout = 30 * 1000;
+
+    void setTimeout(int timeout) {
+        this.timeout = timeout;
     }
 
-    ResponseType type;
-
-    public Response (ResponseType type) {
-        this.type = type;
+    byte[] generateToken(String clientToken) {
+        byte[] token = new byte[TOKEN_LENGTH];
+        random.nextBytes(token);
+        tokens.put(clientToken, token);
+        scheduleRemoval(clientToken);
+        return token;
     }
 
-    @Override
-    public ResponseType getType() {
-        return type;
+    private void scheduleRemoval(final String clientToken) {
+        TimerTask task = new TimerTask() {
+            
+            @Override
+            public void run() {
+                tokens.remove(clientToken);
+            }
+        };
+        timer.schedule(task, timeout);
+    }
+
+    boolean verifyToken(String clientToken, byte[] token) {
+        if (tokens.containsKey(clientToken)) {
+            byte[] storedToken = tokens.get(clientToken);
+            boolean verified = Arrays.equals(token, storedToken);
+            if (verified) {
+                tokens.remove(clientToken);
+            }
+            return verified;
+        }
+        return false;
     }
 
 }
