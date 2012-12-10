@@ -60,6 +60,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -82,6 +83,7 @@ import org.apache.http.util.EntityUtils;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.redhat.thermostat.storage.core.AuthToken;
 import com.redhat.thermostat.common.utils.LoggingUtils;
 import com.redhat.thermostat.storage.config.StartupConfiguration;
 import com.redhat.thermostat.storage.core.Category;
@@ -89,6 +91,7 @@ import com.redhat.thermostat.storage.core.Connection;
 import com.redhat.thermostat.storage.core.Cursor;
 import com.redhat.thermostat.storage.core.Query;
 import com.redhat.thermostat.storage.core.Remove;
+import com.redhat.thermostat.storage.core.SecureStorage;
 import com.redhat.thermostat.storage.core.Storage;
 import com.redhat.thermostat.storage.core.StorageException;
 import com.redhat.thermostat.storage.core.Update;
@@ -100,7 +103,7 @@ import com.redhat.thermostat.web.common.WebQuery;
 import com.redhat.thermostat.web.common.WebRemove;
 import com.redhat.thermostat.web.common.WebUpdate;
 
-public class WebStorage implements Storage {
+public class WebStorage implements Storage, SecureStorage {
 
     private static final String HTTPS_PREFIX = "https";
     final Logger logger = LoggingUtils.getLogger(WebStorage.class);
@@ -278,6 +281,7 @@ public class WebStorage implements Storage {
     DefaultHttpClient httpClient;
     private String username;
     private String password;
+    private SecureRandom random;
 
     public WebStorage(StartupConfiguration config) throws StorageException {
         categoryIds = new HashMap<>();
@@ -286,6 +290,8 @@ public class WebStorage implements Storage {
         ClientConnectionManager connManager = new ThreadSafeClientConnManager();
         DefaultHttpClient client = new DefaultHttpClient(connManager);
         httpClient = client;
+        random = new SecureRandom();
+
         // setup SSL if necessary
         if (config.getDBConnectionString().startsWith(HTTPS_PREFIX)) {
             registerSSLScheme(connManager);
@@ -551,6 +557,48 @@ public class WebStorage implements Storage {
     public void setAuthConfig(String username, String password) {
         this.username = username;
         this.password = password;
+    }
+
+    @Override
+    public AuthToken generateToken() throws StorageException {
+        byte[] token = new byte[256];
+        random.nextBytes(token);
+        NameValuePair clientTokenParam = new BasicNameValuePair("client-token", Base64.encodeBase64String(token));
+        List<NameValuePair> formparams = Arrays.asList(clientTokenParam);
+        try (CloseableHttpEntity entity = post(endpoint + "/generate-token", formparams)) {
+            byte[] authToken = EntityUtils.toByteArray(entity);
+            return new AuthToken(authToken, token);
+        } catch (IOException ex) {
+            throw new StorageException(ex);
+        }
+    }
+
+    @Override
+    public boolean verifyToken(AuthToken authToken) {
+        byte[] clientToken = authToken.getClientToken();
+        byte[] token = authToken.getToken();
+        NameValuePair clientTokenParam = new BasicNameValuePair("client-token", Base64.encodeBase64String(clientToken));
+        NameValuePair tokenParam = new BasicNameValuePair("token", Base64.encodeBase64String(token));
+        List<NameValuePair> formparams = Arrays.asList(clientTokenParam, tokenParam);
+        HttpResponse response = null;
+        try {
+            HttpEntity entity = new UrlEncodedFormEntity(formparams, "UTF-8");
+            HttpPost httpPost = new HttpPost(endpoint + "/verify-token");
+            httpPost.setEntity(entity);
+            response = httpClient.execute(httpPost);
+            StatusLine status = response.getStatusLine();
+            return status.getStatusCode() == 200;
+        } catch (IOException ex) {
+            throw new StorageException(ex);
+        } finally {
+            if (response != null) {
+                try {
+                    EntityUtils.consume(response.getEntity());
+                } catch (IOException ex) {
+                    throw new StorageException(ex);
+                }
+            }
+        }
     }
 
 }

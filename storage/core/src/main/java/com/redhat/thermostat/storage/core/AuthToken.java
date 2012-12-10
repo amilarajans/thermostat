@@ -34,44 +34,31 @@
  * to do so, delete this exception statement from your version.
  */
 
-package com.redhat.thermostat.common.command;
 
-public class Response implements Message {
+package com.redhat.thermostat.storage.core;
 
-    // TODO add parameter support to provide more information in some of these types.
-    public enum ResponseType implements MessageType {
-        /** Request has been acknowledged and completed agent-side */
-        OK,
+import java.util.Arrays;
 
-        /** Request has been acknowledged and refused agent-side. */
-        NOK,
 
-        /**
-         * Request has been acknowledged, but no action deemed necessary
-         * agent-side.
-         */
-        NOOP,
+public class AuthToken {
 
-        /**
-         * An error occurred. The status of the request is not known.
-         */
-        ERROR,
+    private byte[] token;
+    private byte[] clientToken;
 
-	/**
-         * When authentication fails in SecureStorage.
-	 */
-	AUTH_FAILED;
+    public AuthToken(byte[] token, byte[] clientToken) {
+        this.token = token;
+        this.clientToken = clientToken;
     }
 
-    ResponseType type;
-
-    public Response (ResponseType type) {
-        this.type = type;
+    public byte[] getToken() {
+        return token;
     }
 
-    @Override
-    public ResponseType getType() {
-        return type;
+    public byte[] getClientToken() {
+        return clientToken;
     }
 
+    public String toString() {
+        return "AuthToken: client-token: " + Arrays.toString(clientToken) + ", token: " + Arrays.toString(token);
+    }
 }
