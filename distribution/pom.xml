@@ -1,0 +1,590 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+
+ Copyright 2012 Red Hat, Inc.
+
+ This file is part of Thermostat.
+
+ Thermostat is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published
+ by the Free Software Foundation; either version 2, or (at your
+ option) any later version.
+
+ Thermostat is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Thermostat; see the file COPYING.  If not see
+ <http://www.gnu.org/licenses />.
+
+ Linking this code with other modules is making a combined work
+ based on this code.  Thus, the terms and conditions of the GNU
+ General Public License cover the whole combination.
+
+ As a special exception, the copyright holders of this code give
+ you permission to link this code with independent modules to
+ produce an executable, regardless of the license terms of these
+ independent modules, and to copy and distribute the resulting
+ executable under terms of your choice, provided that you also
+ meet, for each linked independent module, the terms and conditions
+ of the license of that module.  An independent module is a module
+ which is not derived from or based on this code.  If you modify
+ this code, you may extend this exception to your version of the
+ library, but you are not obligated to do so.  If you do not wish
+ to do so, delete this exception statement from your version.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.redhat.thermostat</groupId>
+    <artifactId>thermostat</artifactId>
+    <version>0.5.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>thermostat-distribution</artifactId>
+  <packaging>jar</packaging>
+
+  <name>Thermostat Distribution</name>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <main.basedir>${project.basedir}/..</main.basedir>
+  </properties>
+
+  <build>
+    <plugins>
+      <!-- skip unit test run, tests to be executed during integration-test -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <skip>true</skip>
+        </configuration>
+        <executions>
+          <execution>
+            <id>run-integration-tests</id>
+            <phase>integration-test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <skip>false</skip>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+          <execution>
+            <id>copy-deps</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <excludeTransitive>false</excludeTransitive>
+              <excludeGroupIds>org.osgi,junit,org.hamcrest</excludeGroupIds>
+              <outputDirectory>${project.build.directory}/libs</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>2.5</version>
+        <executions>
+          <execution>
+            <id>copy-scripts</id>
+            <phase>prepare-package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>desktop</directory>
+                  <targetPath />
+                  <filtering>true</filtering>
+                </resource>
+                <resource>
+                  <directory>scripts</directory>
+                  <targetPath>bin</targetPath>
+                  <filtering>true</filtering>
+                </resource>
+                <resource>
+                  <directory>config</directory>
+                  <targetPath>agent</targetPath>
+                  <filtering>true</filtering>
+                  <includes>
+                    <include>agent.properties</include>
+                  </includes>
+                </resource>
+                <resource>
+                  <directory>config</directory>
+                  <targetPath>etc</targetPath>
+                  <filtering>true</filtering>
+                  <includes>
+                    <include>ssl.properties</include>
+                  </includes>
+                </resource>
+                <resource>
+                  <directory>config</directory>
+                  <targetPath>storage</targetPath>
+                  <filtering>true</filtering>
+                  <includes>
+                    <include>db.properties</include>
+                  </includes>
+                </resource>
+                <resource>
+                  <directory>config</directory>
+                  <targetPath>etc</targetPath>
+                  <filtering>true</filtering>
+                  <includes>
+                    <include>logging.properties</include>
+                    <include>osgi-export.properties</include>
+                    <include>commands/*.properties</include>
+                  </includes>
+                </resource>
+                <resource>
+                  <directory>tools</directory>
+                  <targetPath>tools</targetPath>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>1.6</version>
+        <executions>
+          <execution>
+            <id>chmod</id>
+            <phase>prepare-package</phase>
+            <configuration>
+              <target>
+                <chmod file="${project.build.directory}/bin/*" perm="755" />
+                <chmod file="${project.build.directory}/tools/*" perm="755" />
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>directory-structure</id>
+            <phase>prepare-package</phase>
+            <configuration>
+              <target>
+                <mkdir dir="${project.build.directory}/etc" />
+                <mkdir dir="${project.build.directory}/etc/commands" />
+                <mkdir dir="${project.build.directory}/storage" />
+                <mkdir dir="${project.build.directory}/storage/db" />
+                <mkdir dir="${project.build.directory}/storage/logs" />
+                <mkdir dir="${project.build.directory}/storage/run" />
+                <mkdir dir="${project.build.directory}/agent/logs" />
+                <mkdir dir="${project.build.directory}/agent/run" />
+                <mkdir dir="${project.build.directory}/client" />
+                <mkdir dir="${project.build.directory}/osgi-cache" />
+                <mkdir dir="${project.build.directory}/libs/native" />
+                
+                <!--  also copy the native libraries -->
+                <copy file="${main.basedir}/keyring/target/libGnomeKeyringWrapper.so"
+                      todir="${project.build.directory}/libs/native" />
+                <copy file="${main.basedir}/agent/core/target/libHostNameWrapper.so"
+                      todir="${project.build.directory}/libs/native" />
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>version-less-dep-symlinks</id>
+            <phase>prepare-package</phase>
+            <configuration>
+              <target>
+                <symlink link="${project.build.directory}/libs/commons-codec.jar"
+                         resource="${project.build.directory}/libs/commons-codec-1.7.jar" />
+                <symlink link="${project.build.directory}/libs/netty.jar"
+                         resource="${project.build.directory}/libs/netty-3.2.4.Final.jar" />
+                <symlink link="${project.build.directory}/libs/jline2.jar"
+                         resource="${project.build.directory}/libs/jline-2.9.jar" />
+                <symlink link="${project.build.directory}/libs/mongo.jar"
+                         resource="${project.build.directory}/libs/mongo-java-driver-2.7.3.jar" />
+                <symlink link="${project.build.directory}/libs/commons-cli.jar"
+                         resource="${project.build.directory}/libs/commons-cli-1.2.jar" />
+                <symlink link="${project.build.directory}/libs/commons-beanutils.jar"
+                         resource="${project.build.directory}/libs/commons-beanutils-1.8.3.jar" />
+                <symlink link="${project.build.directory}/libs/commons-collections.jar"
+                         resource="${project.build.directory}/libs/commons-collections-3.2.1.jar" />
+                <symlink link="${project.build.directory}/libs/commons-logging.jar"
+                         resource="${project.build.directory}/libs/com.springsource.org.apache.commons.logging-1.1.1.jar" />
+                <symlink link="${project.build.directory}/libs/lucene.jar"
+                         resource="${project.build.directory}/libs/org.apache.servicemix.bundles.lucene-3.6.0_1.jar" />
+                <symlink link="${project.build.directory}/libs/gson.jar"
+                         resource="${project.build.directory}/libs/gson-2.2.2.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-continuation.jar"
+                         resource="${project.build.directory}/libs/jetty-continuation-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-http.jar"
+                         resource="${project.build.directory}/libs/jetty-http-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-io.jar"
+                         resource="${project.build.directory}/libs/jetty-io-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-security.jar"
+                         resource="${project.build.directory}/libs/jetty-security-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-server.jar"
+                         resource="${project.build.directory}/libs/jetty-server-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-servlet.jar"
+                         resource="${project.build.directory}/libs/jetty-servlet-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-util.jar"
+                         resource="${project.build.directory}/libs/jetty-util-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-webapp.jar"
+                         resource="${project.build.directory}/libs/jetty-webapp-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/jetty-xml.jar"
+                         resource="${project.build.directory}/libs/jetty-xml-8.1.5.v20120716.jar" />
+                <symlink link="${project.build.directory}/libs/javax-servlet.jar"
+                         resource="${project.build.directory}/libs/javax.servlet-3.0.0.v201112011016.jar" />
+                <symlink link="${project.build.directory}/libs/commons-io.jar"
+                         resource="${project.build.directory}/libs/commons-io-2.4.jar" />
+                <symlink link="${project.build.directory}/libs/commons-fileupload.jar"
+                         resource="${project.build.directory}/libs/commons-fileupload-1.2.2.jar" />
+                <symlink link="${project.build.directory}/libs/httpcomponents-core.jar"
+                         resource="${project.build.directory}/libs/httpcore-osgi-4.1.2.jar" />
+                <symlink link="${project.build.directory}/libs/httpcomponents-client.jar"
+                         resource="${project.build.directory}/libs/httpclient-osgi-4.1.2.jar" />
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+    <pluginManagement>
+      <plugins>
+        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+        <plugin>
+          <groupId>org.eclipse.m2e</groupId>
+          <artifactId>lifecycle-mapping</artifactId>
+          <version>1.0.0</version>
+          <configuration>
+            <lifecycleMappingMetadata>
+              <pluginExecutions>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <versionRange>[2.4,)</versionRange>
+                    <goals>
+                      <goal>copy-dependencies</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <ignore></ignore>
+                  </action>
+                </pluginExecution>
+              </pluginExecutions>
+            </lifecycleMappingMetadata>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+  <dependencies>
+
+    <!-- integration tests -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.sourceforge.expectj</groupId>
+      <artifactId>expectj</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- thermostat parts -->
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-main</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-bundles</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-launcher</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-swing-components</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-client-command</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-client-cli</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-host-overview-client-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-host-overview-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-host-cpu-client-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-host-cpu-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-host-cpu-agent</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-host-memory-client-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-host-memory-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-host-memory-agent</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-overview-client-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-overview-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-cpu-client-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-cpu-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-cpu-agent</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-gc-client-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-gc-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-gc-agent</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-classstat-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-classstat-agent</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-memory-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-memory-agent</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-heap-analysis-client-swing</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-osgi-living-vm-filter-swing</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-agent-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-agent-cli</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-agent-command</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-heap-analysis-agent</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-killvm-agent</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-killvm-client-swing</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-common-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-common-command</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-osgi-process-handler</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-keyring</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-web-client</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-web-cmd</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <version>8.1.5.v20120716</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-webapp</artifactId>
+      <version>8.1.5.v20120716</version>
+    </dependency>
+
+    <!--  thread plugin -->
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-thread-client-common</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-thread-client-controllers</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-thread-client-swing</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-thread-collector</artifactId>
+        <version>${project.version}</version>
+    </dependency>      
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-thread-harvester</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+     
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-system-backend</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    
+    <!-- new GC plugin -->
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-gc-remote-collector-common</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-gc-remote-collector-client-common</artifactId>
+        <version>${project.version}</version>
+    </dependency>    
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-gc-remote-collector-client-swing</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>com.redhat.thermostat</groupId>
+        <artifactId>thermostat-gc-remote-collector-command</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+         
+  </dependencies>
+</project>
