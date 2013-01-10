@@ -1,0 +1,56 @@
+<!DOCTYPE web-app PUBLIC
+ "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+ "http://java.sun.com/dtd/web-app_2_3.dtd" >
+
+<web-app>
+
+  <display-name>Thermostat Web Service</display-name>
+  <description>Thermostat Web Service</description> 
+  <servlet>
+    <init-param>
+      <param-name>storage.class</param-name>
+      <param-value>com.redhat.thermostat.storage.mongodb.MongoStorageProvider</param-value>
+    </init-param>
+    <init-param>
+      <param-name>storage.endpoint</param-name>
+      <param-value>mongodb://127.0.0.1:27518</param-value>
+    </init-param>
+    <!-- The timeout of the token manager in ms -->
+    <init-param>
+      <param-name>token-manager-timeout</param-name>
+      <param-value>3000</param-value>
+    </init-param>
+    <servlet-name>reststorage-servlet</servlet-name>
+    <servlet-class>com.redhat.thermostat.web.server.WebStorageEndPoint</servlet-class>
+  </servlet>
+
+  <servlet-mapping>
+    <servlet-name>reststorage-servlet</servlet-name>
+    <url-pattern>/storage/*</url-pattern>
+  </servlet-mapping>
+
+  <security-constraint>
+    <web-resource-collection>
+      <web-resource-name>Entire Application</web-resource-name>
+      <url-pattern>/*</url-pattern>
+    </web-resource-collection>
+    <auth-constraint>
+      <role-name>thermostat-agent</role-name>
+      <role-name>thermostat-client</role-name>
+      <role-name>thermostat-cmd-channel</role-name>
+    </auth-constraint>
+  </security-constraint>
+
+  <login-config>
+    <auth-method>BASIC</auth-method>
+    <realm-name>Thermostat Realm</realm-name>
+  </login-config>
+
+  <security-role>
+    <role-name>thermostat-agent</role-name>
+  </security-role>
+  <security-role>
+    <role-name>thermostat-client</role-name>
+  </security-role>
+
+</web-app>
