@@ -1,0 +1,117 @@
+#!/bin/bash
+#
+# Copyright 2012, 2013 Red Hat, Inc.
+#
+# This file is part of Thermostat.
+#
+# Thermostat is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published
+# by the Free Software Foundation; either version 2, or (at your
+# option) any later version.
+#
+# Thermostat is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Thermostat; see the file COPYING.  If not see
+# <http://www.gnu.org/licenses/>.
+#
+# Linking this code with other modules is making a combined work
+# based on this code.  Thus, the terms and conditions of the GNU
+# General Public License cover the whole combination.
+#
+# As a special exception, the copyright holders of this code give
+# you permission to link this code with independent modules to
+# produce an executable, regardless of the license terms of these
+# independent modules, and to copy and distribute the resulting
+# executable under terms of your choice, provided that you also
+# meet, for each linked independent module, the terms and conditions
+# of the license of that module.  An independent module is a module
+# which is not derived from or based on this code.  If you modify
+# this code, you may extend this exception to your version of the
+# library, but you are not obligated to do so.  If you do not wish
+# to do so, delete this exception statement from your version.
+#
+#####################################################################
+#
+# Some necessary variables.
+JAVA_DIR="@java.dir@"
+JAVA="@java.home@/bin/java"
+
+if [ x"$THERMOSTAT_INSTALL_DIR" = x ] ; then
+  THERMOSTAT_INSTALL_DIR="@thermostat.home@"
+fi
+# Not always are installation directory and thermostat home one and
+# the same location.
+if [ x"$THERMOSTAT_HOME" = x ] ; then
+  THERMOSTAT_HOME=${THERMOSTAT_INSTALL_DIR}
+  export THERMOSTAT_HOME
+fi
+THERMOSTAT_LIBS="${THERMOSTAT_HOME}/libs"
+
+# need tools from the JVM
+TOOLS_JAR="@java.home@/../lib/tools.jar"
+
+# plus the main services we use and export
+SERVICE_CLASSPATH="${THERMOSTAT_LIBS}/*"
+
+SERVICE_CLASSPATH="${TOOLS_JAR}:${SERVICE_CLASSPATH}"
+THERMOSTAT_MAIN="com.redhat.thermostat.main.Thermostat"
+
+function usage() {
+    echo "$0 [-J<java-opt>] [-Tbg PIDFILE] [THERMOSTAT_ARGS]" >&2
+    exit 1
+}
+
+# start parsing arguments, we intercept jvm arguments vs thermostat specific
+# arguments
+JAVA_ARGS=()
+ARGS=()
+
+RUN_IN_BG=0
+PID_FILE=""
+
+i=0
+j=0
+
+while [ "$#" -gt "0" ];
+do
+    case "$1" in
+    -J*)
+        JAVA_ARGS[$i]="${1##-J}"
+        i=$((i+1))
+        shift
+        ;;
+    -Tbg)
+        shift
+        RUN_IN_BG=1
+        PID_FILE="$1"
+        shift
+        ;;
+    *)
+        ARGS[$j]="$1"
+        j=$((j+1))
+        shift
+        ;;
+    esac
+done
+
+# Finally run thermostat (optionally in the background)
+if [ $RUN_IN_BG -eq 1 ]; then
+    # The thermostat-agent-sysd script uses this.
+    if [ x"$PID_FILE" = "x" ]; then
+        usage 
+    else
+        ${JAVA} "${JAVA_ARGS[@]}" -cp ${SERVICE_CLASSPATH} ${THERMOSTAT_MAIN} "${ARGS[@]}" &
+        retval=$?
+        echo $! > $PID_FILE
+        retval=$(( $retval + $? ))
+    fi
+else
+    ${JAVA} "${JAVA_ARGS[@]}" -cp ${SERVICE_CLASSPATH} ${THERMOSTAT_MAIN} "${ARGS[@]}"
+    retval=$?
+fi
+exit $retval
+

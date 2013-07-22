@@ -1,0 +1,194 @@
+Thank you for downloading Thermostat.
+
+
+CONTENT:
+--------------------------------------------------------------------------------
+
+1.  REQUIREMENTS
+2.  BUILDING THERMOSTAT
+2.1   BUILDING THERMOSTAT CORE
+2.2   BUILDING THERMOSTAT ECLIPSE (optional)
+3.  RUNNING THERMOSTAT
+3.1   RUNNING THERMOSTAT CORE
+3.1.1 PASSING JVM SPECIFIC OPTIONS
+3.1.2 GNOME KEYRING
+3.2   RUNNING THERMOSTAT ECLIPSE
+4.  REFERECES
+
+
+--------------------------------------------------------------------------------
+1. REQUIREMENTS
+
+* OpenJDK7
+
+Thermostat requires at least Java 7 to build and run. Thermostat has been tested
+with OpenJDK7. Other VMs or versions may or may not work.
+
+* Maven (it will download all the java dependencies for you)
+* Make + GCC
+* MongoDB server
+
+Thermostat requires mongodb (http://www.mongodb.org/) server >= 2.0.0
+
+* Either a /etc/os-release file or lsb_release
+* Gnome Keyring Daemon development libraries plus pkg-configs
+* GTK 2+ development libraries plus pkg-configs
+
+Gnome Keyring/GTK2+ development libraries are required at build time.
+
+You should check your distribution for the exact name of the libraries, on Fedora
+based distributions you can obtain it via:
+
+   yum install libgnome-keyring-devel gtk2-devel
+
+on RHEL/Centos 6.x via:
+
+   yum install gnome-keyring-devel gtk2-devel
+
+On Debian (and probably Ubuntu):
+
+   aptitude install libgnome-keyring-dev libgtk2.0-dev
+
+--------------------------------------------------------------------------------
+2. BUILDING THERMOSTAT
+
+Thermostat consists of "Thermostat Core" and "Thermostat Eclipse". Building
+"Thermostat Eclipse" is optional. If you are a first-time Thermostat user, you
+might want to try try "Thermostat Core" first.
+
+Thermostat Core consists of:
+  * CLI client
+  * Swing GUI client
+  * The thermostat agent
+  * The web service layer (plugged-in optionally)
+
+Thermostat Eclipse is an Eclipse-based Thermostat client. At this point the
+Eclipse-based client is experimental.
+
+--------------------------------------------------------------------------------
+2.1. BUILDING THERMOSTAT CORE
+
+2.1.1.
+   Run "mvn clean install". All tests should pass and the build should
+   succeed. It requires a graphical environment for the ui tests.
+   
+   You can skip the tests phase by running:
+   
+   mvn -Dmaven.test.skip=true clean install
+
+   If maven is too chatty, you can try to pass the "-q" option:
+   
+   mvn -q -Dmaven.test.skip=true clean install
+   
+2.1.2.
+   The resulting Thermostat system can now be found under the directory
+   distribution/target.
+           
+--------------------------------------------------------------------------------
+2.2. BUILDING THERMOSTAT ECLIPSE (optional)
+
+2.2.1.
+   Run "make". This will build both, Thermostat Core and Thermostat Eclipse,
+   since Eclipse bits depend on Thermostat Core. All tests should pass and the
+   build should succeed. Running Eclipse plug-in tests will open an Eclipse
+   instance during build. This requires a working graphical environment and
+   DISPLAY.
+
+   You can skip the tests phase by running:
+
+   make SKIP_TESTS=true
+
+2.2.2.
+   This produces a local "update-site" or p2 repository from which you can
+   install Thermostat Eclipse into your Eclipse. The repository is at:
+
+   eclipse/composite-repo/target/composite-repo
+
+--------------------------------------------------------------------------------
+3. RUNNING THERMOSTAT
+
+--------------------------------------------------------------------------------
+3.1. RUNNING THERMOSTAT CORE
+
+  cd into distribution/target directory just created
+
+  To start the agent and the db:
+  bin/thermostat service
+
+  To start the gui client:
+  bin/thermostat gui
+
+  To start the thermostat shell:
+  bin/thermostat shell
+
+  Use the help command in order to find out about all available commands:
+  bin/thermostat help
+
+See also the user guide in the REFERECES section of this document.
+
+
+3.1.1. PASSING JVM SPECIFIC OPTIONS TO THERMOSTAT
+
+In some cases, it may be desirable to pass arguments to the virtual machine,
+for example to increase memory or change the look and feel for the Swing Client.
+
+Thermostat follows a well established convention to enable this: options that
+start with -J are not passed to the thermostat launcher, but instead to the
+JVM itself.
+
+For example, this command launches thermostat with the Nimbus Look and Feel,
+rather then the default one:
+
+bin/thermostat gui \
+    -J-Dswing.defaultlaf=javax.swing.plaf.nimbus.NimbusLookAndFeel
+
+
+3.1.2. GNOME KEYRING AND THERMOSTAT
+
+Thermostat includes experimental support to store user credentials in the
+Gnome Keyring daemon, this support is currently limited to passwords only.
+
+Runtime supports for the Keyring is optional and can be disabled via a system
+property:
+
+ * -J-Dcom.redhat.thermostat.utils.keyring.provider=com.redhat.thermostat.utils.keyring.MemoryKeyring
+
+The memory keyring stores passwords in memory and not on disk. This means
+passwords don't persist across Thermostat sessions. A session is terminated by
+exiting the application.
+
+NOTE: thermostat keeps all the passwords in clear text memory during execution,
+the keyring is only used to securely store passwords on disk. The passwords are
+saved in the user session keychain and available to other applications that
+can access the keyring. 
+
+--------------------------------------------------------------------------------
+3.2. RUNNING THERMOSTAT ECLIPSE
+
+  Note that the Thermostat Eclipse client is an experimental feature at this
+  point.
+
+  The "eclipse/composite-repo/target/composite-repo" directory was
+  produced during step 2.2. In order to use this local repository
+  follow these steps:
+
+    "Help" => "Install New Software..."
+    "Add..."
+    "Local..."
+    Select "eclipse/composite-repo/target/composite-repo"
+    Give it any name you like and click "OK".
+    Select "Thermostat Eclipse Plug-ins", then "Next >"
+    Click through dialog, accepting options.
+   
+  After this you should be able to open the Thermostat Eclipse perspective:
+    "Window" => "Open Perspective" => "Other..." => "Thermostat" 
+
+  Next, make sure you've got the thermostat service running (see above) and
+  click the "Connect" link/icon. Enjoy!
+            
+
+--------------------------------------------------------------------------------
+4. REFERECES
+
+  User Guide:
+    http://icedtea.classpath.org/wiki/Thermostat/UserGuide
