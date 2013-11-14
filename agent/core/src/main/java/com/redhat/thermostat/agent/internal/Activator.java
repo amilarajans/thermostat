@@ -39,22 +39,38 @@ package com.redhat.thermostat.agent.internal;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
+import com.redhat.thermostat.agent.VmBlacklist;
 import com.redhat.thermostat.utils.management.MXBeanConnectionPool;
+import com.redhat.thermostat.utils.management.internal.AgentProxyFilter;
 import com.redhat.thermostat.utils.management.internal.MXBeanConnectionPoolImpl;
 import com.redhat.thermostat.utils.username.UserNameUtil;
 import com.redhat.thermostat.utils.username.internal.UserNameUtilImpl;
 
 public class Activator implements BundleActivator {
+    
+    private final MXBeanConnectionPoolImpl pool;
+    
+    public Activator() {
+        this(new MXBeanConnectionPoolImpl());
+    }
+    
+    Activator(MXBeanConnectionPoolImpl pool) {
+        this.pool = pool;
+    }
 
     @Override
     public void start(BundleContext context) throws Exception {
-        context.registerService(MXBeanConnectionPool.class, new MXBeanConnectionPoolImpl(), null);
+        context.registerService(MXBeanConnectionPool.class, pool, null);
         context.registerService(UserNameUtil.class, new UserNameUtilImpl(), null);
+        VmBlacklistImpl blacklist = new VmBlacklistImpl();
+        blacklist.addVmFilter(new AgentProxyFilter());
+        context.registerService(VmBlacklist.class, blacklist, null);
     }
 
     @Override
     public void stop(BundleContext context) throws Exception {
         // Services automatically unregistered by framework
+        pool.shutdown();
     }
 
 }
