@@ -1,0 +1,675 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+ Copyright 2012-2015 Red Hat, Inc.
+
+ This file is part of Thermostat.
+
+ Thermostat is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published
+ by the Free Software Foundation; either version 2, or (at your
+ option) any later version.
+
+ Thermostat is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with Thermostat; see the file COPYING.  If not see
+ <http://www.gnu.org/licenses/>.
+
+ Linking this code with other modules is making a combined work
+ based on this code.  Thus, the terms and conditions of the GNU
+ General Public License cover the whole combination.
+
+ As a special exception, the copyright holders of this code give
+ you permission to link this code with independent modules to
+ produce an executable, regardless of the license terms of these
+ independent modules, and to copy and distribute the resulting
+ executable under terms of your choice, provided that you also
+ meet, for each linked independent module, the terms and conditions
+ of the license of that module.  An independent module is a module
+ which is not derived from or based on this code.  If you modify
+ this code, you may extend this exception to your version of the
+ library, but you are not obligated to do so.  If you do not wish
+ to do so, delete this exception statement from your version.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.redhat.thermostat</groupId>
+  <artifactId>thermostat</artifactId>
+  <version>1.99.2-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>Thermostat</name>
+  <url>${thermostat.url}</url>
+
+  <profiles>
+    <profile>
+      <id>default</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <license.skip>false</license.skip>
+      </properties>
+    </profile>
+    <profile>
+      <!-- Some thermostat code uses sun.jvmstat and com.sun.tools.attach.
+           These are only available via tools.jar prior to JDK 9 -->
+      <id>needs-tools-jar</id>
+      <activation>
+        <jdk>[1.7,1.9)</jdk>
+      </activation>
+      <dependencies>
+        <dependency>
+          <groupId>com.sun</groupId>
+          <artifactId>tools</artifactId>
+          <version>${jdktools.version}</version>
+          <scope>system</scope>
+          <systemPath>${java.home}/../lib/tools.jar</systemPath>
+        </dependency>
+      </dependencies>
+    </profile>
+
+    <!-- Profile for running performance tests. Performance tests are
+         excluded from normal builds. That is, they'll only run if
+         explicitly requested via -Pperf-tests. See web/common/pom.xml 
+         for an example as to how this property is used. -->
+    <profile>
+      <id>perf-tests</id>
+      <properties>
+        <!-- define it empty so as to NOT exclude the PerformanceTests
+             categorized tests. -->
+        <surefire-perftests-exclusion />
+      </properties>
+    </profile>
+    <profile>
+      <id>java-7</id>
+      <activation>
+        <jdk>1.7</jdk>
+      </activation>
+      <properties>
+        <surefire-argline>-XX:-UseSplitVerifier -XX:MaxPermSize=300m</surefire-argline>
+      </properties>
+    </profile>
+    <!-- Development settings for web.xml. Release builds should
+         have the "environment.type=release" property. -->
+    <profile>
+      <id>dev-build</id>
+      <activation>
+        <property>
+          <name>environment.type</name>
+          <value>!release</value>
+        </property>
+      </activation>
+      <properties>
+        <!--
+             The devel.build property is used in the WebAppTest integration
+             test. For this test to work for devel builds, we need
+             to perform actual setup of the below mongodb credentials.
+             Why? Because the snippet for a devel build has the
+             storage username/password NOT commented out in the
+             web.xml of the web archive. That results in MongoConnection
+             of WebAppTest use non-null creds. If those are used mongodb
+             connections would fail with auth-fail if the creds are not
+             set up.
+        -->
+        <devel.build>true</devel.build>
+        <agent.dev.username> agent-tester </agent.dev.username>
+        <agent.dev.password> tester </agent.dev.password>
+        <mongodb.dev.username> mongodevuser </mongodb.dev.username>
+        <mongodb.dev.password> mongodevpassword </mongodb.dev.password>
+        <!-- used in web.xml of the war artifact -->
+        <web.war.backingstorage.username.snippet>
+storage.username=${mongodb.dev.username}
+        </web.war.backingstorage.username.snippet>
+        <!-- used in web.xml of the war artifact -->
+        <web.war.backingstorage.password.snippet>
+storage.password=${mongodb.dev.password}
+        </web.war.backingstorage.password.snippet>
+        <!--
+             Used in thermostat-users.properties. We define two users.
+             One client user and one agent user.
+        -->
+        <dev.users.snippet>
+${agent.dev.username}=${agent.dev.password}
+client-tester=tester
+        </dev.users.snippet>
+        <dev.roles.snippet>
+# Roles for our two dev users
+${agent.dev.username}=thermostat-agent, thermostat-grant-write-files-all-agent
+# client-tester needs thermostat-purge role for clean-data command to work
+client-tester=thermostat-grant-read-all-client, thermostat-cmdc, thermostat-purge
+# Agent recursive role
+thermostat-agent = thermostat-cmdc-verify, \
+                   thermostat-login, \
+                   thermostat-prepare-statement, \
+                   thermostat-purge, \
+                   thermostat-register-category, \
+                   thermostat-realm, \
+                   thermostat-save-file, \
+                   thermostat-write
+# Grant agent to write any file
+thermostat-grant-write-files-all-agent = thermostat-files-grant-write-filename-ALL
+                   
+# Client recursive role (granting a client to read all data + all files)
+thermostat-grant-read-all-client = thermostat-agents-grant-read-agentId-ALL, \
+                    thermostat-cmdc-generate, \
+                    thermostat-hosts-grant-read-hostname-ALL, \
+                    thermostat-load-file, \
+                    thermostat-login, \
+                    thermostat-prepare-statement, \
+                    thermostat-query, \
+                    thermostat-realm, \
+                    thermostat-register-category, \
+                    thermostat-vms-grant-read-username-ALL, \
+                    thermostat-vms-grant-read-vmId-ALL, \
+                    thermostat-files-grant-read-filename-ALL, \
+                    thermostat-write
+# Grants all command channel operations
+thermostat-cmdc = thermostat-cmdc-grant-garbage-collect, \
+                  thermostat-cmdc-grant-dump-heap, \
+                  thermostat-cmdc-grant-thread-harvester, \
+                  thermostat-cmdc-grant-killvm, \
+                  thermostat-cmdc-grant-profile-vm, \
+                  thermostat-cmdc-grant-ping, \
+                  thermostat-cmdc-grant-jmx-toggle-notifications
+        </dev.roles.snippet>
+        <agent.auth.snippet>
+username=${agent.dev.username}
+password=${agent.dev.password}
+        </agent.auth.snippet>
+      </properties>
+    </profile>
+    <profile>
+      <id>skip-license-check-on-skip-tests</id>
+      <activation>
+        <property>
+          <name>skipTests</name>
+        </property>
+      </activation>
+      <properties>
+        <license.skip>true</license.skip>
+      </properties>
+    </profile>
+    <profile>
+      <id>skip-license-check-on-test-skip</id>
+      <activation>
+        <property>
+          <name>maven.test.skip</name>
+        </property>
+      </activation>
+      <properties>
+        <license.skip>true</license.skip>
+      </properties>
+    </profile>
+  </profiles>
+
+  <properties>
+  
+    <main.basedir>${project.basedir}</main.basedir>  
+  
+    <maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>
+    <thermostat.releasedate>${maven.build.timestamp}</thermostat.releasedate>
+    <thermostat.email>thermostat@icedtea.classpath.org</thermostat.email>
+    <thermostat.url>http://icedtea.classpath.org/thermostat/</thermostat.url>
+    <thermostat.bug.url>http://icedtea.classpath.org/bugzilla/enter_bug.cgi?product=Thermostat</thermostat.bug.url>
+
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <thermostat.build.directory>target</thermostat.build.directory>
+    <thermostat.java.version>1.7</thermostat.java.version>
+    <thermostat.home>${user.dir}/distribution/target/image/</thermostat.home>
+    <!-- used in systemd service files. Set this to the username thermostat should run
+         under when run via systemd. -->
+    <thermostat.system.user>thermostat</thermostat.system.user>
+    <thermostat.system.group>thermostat</thermostat.system.group>
+    <!-- directory into which the exploded web archive should be deployed to -->
+    <thermostat.web.deploy.dir>${thermostat.build.directory}/${project.build.finalName}</thermostat.web.deploy.dir>
+
+    <junit.version>4.10</junit.version>
+    <mockito.version>1.9.5</mockito.version>
+    <fest.version>1.2.1</fest.version>
+    <!-- PowerMock 1.5.6 and up has the fix for finding default methods (issue 513). This
+         makes launcher tests fail with JDK 9 where Path.resolve(String) is a default method. -->
+    <powermock.version>1.5.6</powermock.version>
+    <easymock.version>3.1</easymock.version>
+    <expectj.version>2.0.7</expectj.version>
+
+    <jdktools.version>1.7.0</jdktools.version>
+    <asm.version>5.0.3</asm.version>
+    <jfreechart.version>1.0.14</jfreechart.version>
+    <!-- This should match the version jfreechart pulls in (if any).
+         See the main thermostat bash script where this property is
+         used. -->
+    <jcommon.version>1.0.17</jcommon.version>
+    <mongo-driver.version>2.11.4</mongo-driver.version>
+    <!-- the OSGi Bundle-Version; should match the manifest in the jar -->
+    <mongo-driver.osgi-version>2.11.4.RELEASE</mongo-driver.osgi-version>
+    <commons-beanutils.version>1.8.3</commons-beanutils.version>
+    <commons-cli.version>1.2</commons-cli.version>
+    <commons-io.version>2.4</commons-io.version>
+    <commons-collections.version>3.2.1</commons-collections.version>
+    <commons-logging.version>1.1.3</commons-logging.version>
+    <commons-codec.version>1.7</commons-codec.version>
+    <!-- the OSGi Bundle-Version; should match the manifest in the jar -->
+    <commons-codec.osgi-version>1.7.0</commons-codec.osgi-version>
+    <commons-fileupload.version>1.2.2</commons-fileupload.version>
+
+    <jline.version>2.9</jline.version>
+    <lucene.version>5.1.0_1</lucene.version>
+    <lucene.osgi-version>5.1.0.1</lucene.osgi-version>
+    <lucene-analysis.bundle.symbolic-name>org.apache.servicemix.bundles.lucene-analyzers-common</lucene-analysis.bundle.symbolic-name>
+    <lucene-core.bundle.symbolic-name>org.apache.servicemix.bundles.lucene</lucene-core.bundle.symbolic-name>
+    <!--
+         felix 4.0 is compliant with osgi 4.3
+         for osgi clients, 4.3 is backwards compatible with 4.2
+    -->
+    <osgi.core.version>4.3.1</osgi.core.version>
+    <osgi.compendium.version>4.3.1</osgi.compendium.version>
+    <osgi.compendium.osgi-version>4.3.1.201210102024</osgi.compendium.osgi-version>
+    <osgi.compendium.bundle.symbolic-name>osgi.cmpn</osgi.compendium.bundle.symbolic-name>
+    <felix.framework.version>4.2.0</felix.framework.version>
+
+    <netty.version>3.2.4.Final</netty.version>
+    <httpcomponents.core.version>4.3.2</httpcomponents.core.version>
+    <httpcomponents.client.version>4.3.4</httpcomponents.client.version>
+    <gson.version>2.2.2</gson.version>
+    <jetty.version>9.1.0.v20131115</jetty.version>
+    <jetty-schemas.version>3.1.M0</jetty-schemas.version>
+    <!-- web-endpoint-plugin requires the javax.servlet bundle to be started.
+         Jetty 9 drags in version 3.1.0. That is, if you change the jetty
+         version, please also make sure the javax.servlet api version is
+         suitable for that jetty version. Note that the servlet impl we
+         ship requires API version >= ${javax.servlet.version}. -->
+    <jetty.javax.servlet.osgi.version>3.1.0</jetty.javax.servlet.osgi.version>
+    <!-- used in thermostat-web-server tests only -->
+    <jetty8-tests.version>8.1.5.v20120716</jetty8-tests.version>
+    <!-- This isn't really the lowest possible servlet API we require.
+         However, it's a reasonably low API version. Please, try not
+         to change to a newer version, unless you abolutely have to. -->
+    <javax.servlet.version>2.5</javax.servlet.version>
+
+    <!-- used in web.xml of the war artifact -->
+    <web.war.backingstorage.username.snippet>
+#storage.username=thermostat-mongodb-user
+    </web.war.backingstorage.username.snippet>
+    <!-- used in web.xml of the war artifact -->
+    <web.war.backingstorage.password.snippet>
+#storage.password=supersecrit
+    </web.war.backingstorage.password.snippet>
+    <!--
+         Used in thermostat-users.properties and
+         thermostat-roles.properties respectively. We don't define
+         users or roles for release builds. Hence, those
+         empty property definitions.
+    -->
+    <dev.users.snippet /> <!-- intentionally empty -->
+    <dev.roles.snippet /> <!-- intentionally empty -->
+    <agent.auth.snippet /> <!-- intentionally empty -->
+    <!-- see web/common/pom.xml for an example as to how this is used -->
+    <surefire-perftests-exclusion>com.redhat.thermostat.testutils.PerformanceTest</surefire-perftests-exclusion>
+    <surefire-argline /> <!-- intentionally empty -->
+  </properties>
+
+  <modules>
+    <module>annotations</module>
+    <module>assembly</module>
+    <module>distribution</module>
+    <module>main</module>
+    <module>launcher</module>
+    <module>common</module>
+    <module>agent</module>
+    <module>client</module>
+    <module>unix-process-handler</module>
+    <module>keyring</module>
+    <module>thread</module>
+    <module>killvm</module>
+    <module>web</module>
+    <module>system-backend</module>
+    <module>storage</module>
+    <module>storage-profile</module>
+    <module>host-overview</module>
+    <module>host-cpu</module>
+    <module>host-memory</module>
+    <module>vm-overview</module>
+    <module>vm-cpu</module>
+    <module>vm-gc</module>
+    <module>vm-classstat</module>
+    <module>vm-memory</module>
+    <module>vm-heap-analysis</module>
+    <module>vm-io</module>
+    <module>vm-jmx</module>
+    <module>vm-profiler</module>
+    <module>notes</module>
+    <module>numa</module>
+    <module>laf-utils</module>
+    <module>thermostat-plugin-validator</module>
+    <module>validate-command</module>
+    <module>config</module>
+    <!-- pom-only artifact for reducing duplication
+         of deps across dev/release build profiles -->
+    <module>build-deps</module>
+    <!-- development related modules -->
+    <module>integration-tests</module>
+    <module>dev</module>
+  </modules>
+
+  <build>
+    <directory>${thermostat.build.directory}</directory>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>2.3.2</version>
+          <configuration>
+            <fork>true</fork>
+            <meminitial>128m</meminitial>
+            <maxmem>1024m</maxmem>
+            <source>${thermostat.java.version}</source>
+            <target>${thermostat.java.version}</target>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>2.9.1</version>
+          <configuration>
+            <excludePackageNames>*.impl*;*.internal.*;*.dev.*;*.experimental;com.redhat.thermostat.agent.locale;com.redhat.thermostat.agent.proxy;com.redhat.thermostat.backend.system;com.redhat.thermostat.client.command.cli;com.redhat.thermostat.client.filter.host.swing;com.redhat.thermostat.client.filter.vm.core;com.redhat.thermostat.client.filter.vm.swing;com.redhat.thermostat.client.locale;com.redhat.thermostat.common.locale;com.redhat.thermostat.main;com.redhat.thermostat.numa;com.redhat.thermostat.plugin.validator.locale;com.redhat.thermostat.storage.mongodb;com.redhat.thermostat.test;com.redhat.thermostat.testutils;com.redhat.thermostat.utils.keyring.activator;com.redhat.thermostat.vm;com.redhat.thermostat.host;com.redhat.thermostat.gc;com.redhat.thermostat.thread;com.redhat.thermostat.validate;com.redhat.thermostat.service.activator;com.redhat.thermostat.web;com.redhat.thermostat.killvm;com.redhat.thermostat.notes;com.redhat.thermostat.shared.perflog</excludePackageNames>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-pmd-plugin</artifactId>
+          <version>2.7</version>
+          <configuration>
+            <targetJdk>${thermostat.java.version}</targetJdk>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>2.5</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>2.12</version>
+          <configuration>
+            <argLine>${surefire-argline} ${coverageAgent}</argLine>
+            <systemPropertyVariables>
+              <java.awt.headless>false</java.awt.headless>
+              <awt.toolkit>net.java.openjdk.cacio.ctc.CTCToolkit</awt.toolkit>
+              <java.awt.graphicsenv>net.java.openjdk.cacio.ctc.CTCGraphicsEnvironment</java.awt.graphicsenv>
+              <com.redhat.thermostat.utils.keyring.provider>com.redhat.thermostat.utils.keyring.MemoryKeyring</com.redhat.thermostat.utils.keyring.provider>
+            </systemPropertyVariables>
+          </configuration>
+          <dependencies>
+            <dependency>
+              <groupId>org.apache.maven.surefire</groupId>
+              <artifactId>surefire-junit47</artifactId>
+              <version>2.12</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>0.7.0.201403182114</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.felix</groupId>
+          <artifactId>maven-bundle-plugin</artifactId>
+          <version>1.4.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>2.3</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>2.3</version>
+        </plugin>
+        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+        <plugin>
+          <groupId>org.eclipse.m2e</groupId>
+          <artifactId>lifecycle-mapping</artifactId>
+          <version>1.0.0</version>
+          <configuration>
+            <lifecycleMappingMetadata>
+              <pluginExecutions>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>
+                      jacoco-maven-plugin
+                    </artifactId>
+                    <versionRange>
+                      [0.5.10.201208310627,)
+                    </versionRange>
+                    <goals>
+                      <goal>prepare-agent</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <ignore></ignore>
+                  </action>
+                </pluginExecution>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>com.mycila</groupId>
+                    <artifactId>
+                      license-maven-plugin
+                    </artifactId>
+                    <versionRange>
+                      [2.0,)
+                    </versionRange>
+                    <goals>
+                      <goal>check</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <ignore></ignore>
+                  </action>
+                </pluginExecution>
+              </pluginExecutions>
+            </lifecycleMappingMetadata>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <configuration>
+              <propertyName>coverageAgent</propertyName>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <inherited>false</inherited>
+        <configuration>
+          <descriptors>
+            <descriptor>src/main/assembly/src-tarball.xml</descriptor>
+          </descriptors>
+          <runOnlyAtExecutionRoot>true</runOnlyAtExecutionRoot>
+        <appendAssemblyId>false</appendAssemblyId>
+        </configuration>
+      </plugin>
+      <plugin>
+         <groupId>com.mycila</groupId>
+         <artifactId>license-maven-plugin</artifactId>
+         <version>2.6</version>
+         <inherited>false</inherited>
+         <configuration>
+           <skip>${license.skip}</skip>
+           <headerDefinitions>
+             <headerDefinition>src/license/thermostat-java.xml</headerDefinition>
+             <headerDefinition>src/license/thermostat-xml.xml</headerDefinition>
+           </headerDefinitions>
+           <aggregate>true</aggregate>
+           <mapping>
+             <java>THERMOSTAT_JAVA_STYLE</java>
+             <xml>THERMOSTAT_XML_STYLE</xml>
+           </mapping>
+           <header>src/license/header.txt</header>
+           <properties>
+             <inceptionYear>${project.inceptionYear}</inceptionYear>
+           </properties>
+           <includes>
+             <include>**/*.java</include>
+             <include>**/*.xml</include>
+           </includes>
+           <excludes>
+             <exclude>**/src/test/resources/**</exclude>
+             <exclude>**/archetype-resources/**</exclude>
+           </excludes>
+         </configuration>
+         <executions>
+           <execution>
+             <id>check-license</id>
+             <phase>initialize</phase>
+             <goals>
+               <goal>check</goal>
+             </goals>
+           </execution>
+         </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${junit.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-core</artifactId>
+        <version>${mockito.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.easytesting</groupId>
+        <artifactId>fest-swing</artifactId>
+        <version>${fest.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.powermock</groupId>
+        <artifactId>powermock-api-mockito</artifactId>
+        <version>${powermock.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.powermock</groupId>
+        <artifactId>powermock-module-junit4</artifactId>
+        <version>${powermock.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.java.openjdk.cacio</groupId>
+        <artifactId>cacio-tta</artifactId>
+        <version>1.3</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.expectj</groupId>
+        <artifactId>expectj</artifactId>
+        <version>${expectj.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jboss.netty</groupId>
+        <artifactId>netty</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+
+      <!-- Note that jfreechart pulls in jcommon as a dep.
+           The jcommon jar is used explicitly in the main
+           boot script (SERVICE_CLASSPATH). -->
+      <dependency>
+        <groupId>org.jfree</groupId>
+        <artifactId>jfreechart</artifactId>
+        <version>${jfreechart.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.mongodb</groupId>
+        <artifactId>mongo-java-driver</artifactId>
+        <version>${mongo-driver.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-beanutils</groupId>
+        <artifactId>commons-beanutils</artifactId>
+        <version>${commons-beanutils.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-collections</groupId>
+        <artifactId>commons-collections</artifactId>
+        <version>${commons-collections.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-logging</groupId>
+        <artifactId>commons-logging</artifactId>
+        <version>${commons-logging.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-cli</groupId>
+        <artifactId>commons-cli</artifactId>
+        <version>${commons-cli.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>jline</groupId>
+        <artifactId>jline</artifactId>
+        <version>${jline.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.servicemix.bundles</groupId>
+        <artifactId>org.apache.servicemix.bundles.lucene</artifactId>
+        <version>${lucene.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.servicemix.bundles</groupId>
+        <artifactId>org.apache.servicemix.bundles.lucene-analyzers-common</artifactId>
+        <version>${lucene.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.osgi</groupId>
+        <artifactId>org.osgi.core</artifactId>
+        <version>${osgi.core.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.osgi</groupId>
+        <artifactId>org.osgi.compendium</artifactId>
+        <version>${osgi.compendium.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>org.apache.felix.framework</artifactId>
+        <version>${felix.framework.version}</version>
+      </dependency>
+    
+    </dependencies>
+  </dependencyManagement>
+
+  <scm>
+    <connection>scm:hg:http://icedtea.classpath.org/hg/thermostat</connection>
+    <developerConnection>scm:hg:ssh://icedtea.classpath.org/hg/thermostat</developerConnection>
+    <tag>tip</tag>
+    <url>http://icedtea.classpath.org/hg/thermostat</url>
+  </scm>
+
+</project>
+

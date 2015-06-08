@@ -1,0 +1,55 @@
+CC         = gcc
+JAVAH      = javah
+MYCFLAGS   = -c -Wall -fPIC
+MYLDFLAGS  = -fPIC -shared
+COPY       = cp -a
+
+CLASSPATH  = target/classes/
+TARGET_DIR = target
+
+INCLUDE    = -I $(TARGET_DIR) -I $(JAVA_HOME)/include/ -I $(JAVA_HOME)/include/linux
+HOSTNAME_SOURCES    = src/main/native/HostName.c
+HOSTNAME_TARGET     = $(TARGET_DIR)/HostName.c
+HOSTNAME_OBJECTS    = $(HOSTNAME_TARGET:.c=.o)
+
+HOSTNAME_EXECUTABLE = libHostNameWrapper.so
+
+USERNAME_SOURCES    = src/main/native/UserNameUtilImpl.c
+USERNAME_TARGET     = $(TARGET_DIR)/UserNameUtilImpl.c
+USERNAME_OBJECTS    = $(USERNAME_TARGET:.c=.o)
+
+USERNAME_EXECUTABLE = libUserNameUtilWrapper.so
+
+.PHONY:
+JNI_LIST = com.redhat.thermostat.agent.utils.hostname.HostName\
+ com.redhat.thermostat.utils.username.internal.UserNameUtilImpl
+
+$(JNI_LIST):
+	$(JAVAH) -force -classpath $(CLASSPATH) -d $(TARGET_DIR) $(JNI_LIST)
+
+all: $(JNI_LIST) init $(HOSTNAME_SOURCES) $(HOSTNAME_EXECUTABLE) $(USERNAME_SOURCES) $(USERNAME_EXECUTABLE)
+
+.PHONY:
+init:
+	$(COPY) $(HOSTNAME_SOURCES) $(HOSTNAME_TARGET)
+	$(COPY) $(USERNAME_SOURCES) $(USERNAME_TARGET)
+
+$(HOSTNAME_EXECUTABLE): $(HOSTNAME_OBJECTS)
+	$(CC) $(HOSTNAME_OBJECTS) -o $(TARGET_DIR)/$@ $(MYLDFLAGS) $(LDFLAGS)
+	
+$(USERNAME_EXECUTABLE): $(USERNAME_OBJECTS)
+	$(CC) $(USERNAME_OBJECTS) -o $(TARGET_DIR)/$@ $(MYLDFLAGS) $(LDFLAGS)
+
+.c.o:
+	$(CC) $(MYCFLAGS) $(CFLAGS) $(INCLUDE) $< -o $@
+
+clean-lib:
+	rm $(TARGET_DIR)/$(HOSTNAME_EXECUTABLE)
+	rm $(TARGET_DIR)/$(USERNAME_EXECUTABLE)
+	
+clean-obj:
+	rm $(HOSTNAME_OBJECTS) $(HOSTNAME_TARGET)
+	rm $(USERNAME_OBJECTS) $(USERNAME_TARGET)
+	
+clean: clean-obj clean-lib
+	

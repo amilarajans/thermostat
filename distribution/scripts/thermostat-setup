@@ -1,0 +1,335 @@
+#!/bin/bash
+#
+# Copyright 2012-2014 Red Hat, Inc.
+#
+# This file is part of Thermostat.
+#
+# Thermostat is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published
+# by the Free Software Foundation; either version 2, or (at your
+# option) any later version.
+#
+# Thermostat is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Thermostat; see the file COPYING.  If not see
+# <http://www.gnu.org/licenses/>.
+#
+# Linking this code with other modules is making a combined work
+# based on this code.  Thus, the terms and conditions of the GNU
+# General Public License cover the whole combination.
+#
+# As a special exception, the copyright holders of this code give
+# you permission to link this code with independent modules to
+# produce an executable, regardless of the license terms of these
+# independent modules, and to copy and distribute the resulting
+# executable under terms of your choice, provided that you also
+# meet, for each linked independent module, the terms and conditions
+# of the license of that module.  An independent module is a module
+# which is not derived from or based on this code.  If you modify
+# this code, you may extend this exception to your version of the
+# library, but you are not obligated to do so.  If you do not wish
+# to do so, delete this exception statement from your version.
+#
+#####################################################################
+#
+# Setup utility script in order to assist users in setting up
+# mongodb credentials and set web.xml accordingly.
+# 
+# Upon a new install of thermostat it will not run any command
+# until this setup utility has been run. Upon completion this
+# script creates a STAMP file in $USER_THERMOSTAT_HOME, namely:
+# $USER_THERMOSTAT_HOME/data/setup-complete.stamp
+# If the file was created by this utility, it will have content
+# similar to:
+# "Created by thermostat-setup on YYYY-MM-DD-hh:mm:ss"
+# 
+# Since this script merely uses thermostat commands for setting
+# up the mongodb user, this causes a chicken-and-egg problem.
+# We work around this by temporily creating an empty
+# setup-complete-file and replacing it by the real file upon
+# successful completion.
+
+# For debugging
+#set -xv
+
+tty_flags="$(stty -g)"
+
+# Interruptions are failures
+trap exitFail SIGINT
+
+displayThermostatBlurb() {
+  cat <<EOF
+
+Thermostat Basics:
+
+Thermostat is a database backed distributed monitoring
+solution with support for monitoring multiple JVM instances.
+The system is made up of three (3) components:
+
+  1. Agents which collect data.
+  2. Clients, which allow users to visualize collected data.
+  3. Storage layer which connects the above componets.
+
+The storage layer itself is two-tiered. The endpoint agents
+and clients communicate with is a web application which uses
+Mongodb as a backing database.
+
+This script helps with a setup where all three components
+run on a local system. In particular, it helps with the setup
+of the storage layer. First, a user is set up in mongodb which
+the web endpoint will use for database connections. Second,
+the web endpoint's servlet config is updated so as to use the
+credentials of this database user.
+
+Please see the Thermostat User Guide for more information on
+how to connect clients and agents to the pre-configured storage
+layer:
+http://icedtea.classpath.org/wiki/Thermostat/UserGuide
+
+-------------------------------------------------------------
+
+EOF
+}
+
+setThermostatEnvironment() {
+  # Thermostat home
+  if [ "x$THERMOSTAT_HOME" = "x" ] ; then
+    THERMOSTAT_HOME="@thermostat.home@"
+  fi
+  export THERMOSTAT_HOME
+  # Thermostat user home
+  if [ "x$USER_THERMOSTAT_HOME" = "x" ]; then
+    USER_THERMOSTAT_HOME="$HOME/.thermostat"
+  fi
+  export USER_THERMOSTAT_HOME
+  THERMOSTAT="$THERMOSTAT_HOME/bin/thermostat"
+}
+
+setStampCompleteVars() {
+  scriptName="$(basename $0)"
+  timestamp="$(date '+%Y-%m-%d-%H:%M:%S %Z')"
+  SETUP_TMP_UNLOCK_CONTENT="Temporarily unlocked thermostat via $scriptName on $timestamp"
+  SETUP_UNLOCK_CONTENT_REGULAR="Created by $scriptName on $timestamp"
+  SETUP_UNLOCK_CONTENT_READ_ONLY_WEBXML="Created by $scriptName on $timestamp (web.xml read-only)"
+}
+
+exitFail() {
+  # Remove temp stamp file if we've created it
+  # in this script already, but failed somewhere
+  # down the line.
+  removeTempStampFile
+  echo 'Thermostat setup failed!' 1>&2
+  stty "$tty_flags"
+  exit 1
+}
+
+removeTempStampFile() {
+  if [ ! -z "$SETUP_TMP_UNLOCK_CONTENT" ] && 
+     [ ! -z "$SETUP_COMPLETE_FILE" ] && 
+     [ -e $SETUP_COMPLETE_FILE ] &&
+     grep -s "$SETUP_TMP_UNLOCK_CONTENT" "$SETUP_COMPLETE_FILE" > /dev/null; then
+    rm "$SETUP_COMPLETE_FILE"
+  fi
+}
+
+exitSuccess() {
+  # Remove temporary unlock file and create the actual setup-complete
+  # file.
+  removeTempStampFile
+  echo $SETUP_UNLOCK_CONTENT_REGULAR > "$SETUP_COMPLETE_FILE"
+  echo -e "\nThermostat setup complete!\n"
+  echo -e "Be sure to configure thermostat-users.properties and"
+  echo -e "thermostat-roles.properties before you attempt connections"
+  echo -e "with agent(s) and/or client(s)."
+  exit 0
+}
+
+exitSuccessNotWritable() {
+  # Remove temporary unlock file. Note, we intentionally
+  # do not clean up the sed files, since the user might
+  # want to use them still.
+  removeTempStampFile
+  # Create successful stamp file with note that
+  # web.xml might not have been properly set up.
+  echo $SETUP_UNLOCK_CONTENT_READ_ONLY_WEBXML > "$SETUP_COMPLETE_FILE"
+  echo "Thermostat setup complete!"
+  echo -e "\nBe sure to configure $TH_WEB_AUTH as mentioned above."
+  echo -e "\nThen, make sure to configure thermostat-users.properties and"
+  echo -e "thermostat-roles.properties before you attempt connections"
+  echo -e "with agent(s) and/or client(s)."
+  exit 0
+}
+
+unlockThermostat() {
+  setThermostatEnvironment
+  setStampCompleteVars
+  SETUP_COMPLETE_FILE="$USER_THERMOSTAT_HOME/data/setup-complete.stamp"
+  if [ -e "$SETUP_COMPLETE_FILE" ]; then
+    echo "File $SETUP_COMPLETE_FILE exists. Skipping setup!"
+    exit 0
+  fi
+  # Be sure to create the "data" parent directory if it does not
+  # yet exist.
+  local datadir="$(dirname $SETUP_COMPLETE_FILE)"
+  if [ ! -e "$datadir" ]; then
+    mkdir -p "$datadir"
+  fi
+  echo "$SETUP_TMP_UNLOCK_CONTENT" > "$SETUP_COMPLETE_FILE"
+}
+
+runSetup() {
+  unlockThermostat
+  setupMongodbUser
+  TH_WEB_AUTH="$THERMOSTAT_HOME/etc/web.auth"
+  
+  if [ ! -e $TH_WEB_AUTH ]; then
+    echo "File not found: $TH_WEB_AUTH" 1>&2
+    exitFail
+  fi
+
+  if [ ! -w $TH_WEB_AUTH ]; then
+    echo -e "\n\n$(readlink -f $TH_WEB_AUTH) is NOT writable."
+    mkdir -p "$USER_THERMOSTAT_HOME/etc/"
+    TH_WEB_AUTH="$USER_THERMOSTAT_HOME/etc/web.auth"
+    echo -e "Writing to $TH_WEB_AUTH\n"
+  fi
+  local success=0
+  echo "storage.username = $USERNAME" > "$TH_WEB_AUTH"
+  success=$(( $sedSuccess + $? ))
+  echo "storage.password = $PASSWORD" >> "$TH_WEB_AUTH"
+  success=$(( $sedSuccess + $? ))
+  chmod 640 "$TH_WEB_AUTH"
+  success=$(( $sedSuccess + $? ))
+  if [ $success -eq 0 ]; then
+    exitSuccess
+  else
+    echo "Automatic substitution of file $TH_WEB_AUTH failed!" 1>&2
+    exitFail
+  fi
+}
+
+readUsername() {
+  dUsername="$1"
+  prompt="Please enter the desired Mongodb username (press return in order to use '$dUsername'): "
+  read -p "$prompt" USERNAME 
+  if [ "x$USERNAME" = "x" ]; then
+    USERNAME="$dUsername"
+  fi
+  echo "Chosen username is '$USERNAME'"
+}
+
+# Read in the desired password, not permitting
+# empty passwords.
+readFirstPassword() {
+  prompt="Please enter the desired password for user '$USERNAME': "
+  while true; do
+    read -s -p "$prompt" PASSWORD 
+    if [ "x$PASSWORD" = "x" ]; then
+      echo -e "\nPassword must not be empty. Please try again."
+    else
+      echo # Formatting
+      break
+    fi
+  done
+}
+
+# Read in the password confirmation
+confirmReadPassword() {
+  firstTry="$1"
+  prompt="Please confirm password for user '$USERNAME': "
+  read -s -p "$prompt" confirmedPwd 
+  # Passwords cannot be empty
+  if [ "$firstTry" != "$confirmedPwd" ]; then
+    echo -e "\nPasswords did not match. Please try again."
+    PASSWORDS_MATCH="no"
+  else
+    PASSWORDS_MATCH="yes"
+  fi
+}
+
+readPassword() {
+  while true; do
+    readFirstPassword
+    confirmReadPassword "$PASSWORD"
+    if [ "x$PASSWORDS_MATCH" = "xyes" ]; then
+      break;
+    fi
+  done
+}
+
+setupMongodbUser() {
+  # Generate some form of a random default username
+  defaultName="thermostat-user-$(date +%s)"
+  echo -e "\nStarting Mongodb user setup ...\n"
+  echo -e "Next, you are required to enter the username/password,"
+  echo -e "which the web storage endpoint will use for mongodb"
+  echo -e "connections.\n"
+  readUsername "$defaultName"
+  readPassword
+  $THERMOSTAT_HOME/bin/thermostat storage --start --permitLocalhostException
+  MONGOD_RETVAL="$?"
+  if [ "$MONGOD_RETVAL" -ne 0 ] ; then
+    echo -e "\nMongodb user setup failed. Error starting storage." 1>&2
+    exitFail
+  fi
+  sleep 3
+  mongo 127.0.0.1:27518 << EOF
+use thermostat
+var v = db.version();
+var minorMicro = v.substr(v.indexOf('.') + 1)
+var minorVersion = minorMicro.substr(0, minorMicro.indexOf('.'))
+if ( minorVersion <= 2 ) {
+    // mongodb version 2.2 and below don't have the third argument.
+    // this should create the user as read + write.
+    db.addUser("$USERNAME","$PASSWORD")
+} else {
+  if ( minorVersion <= 4 ) {
+    db.addUser({ user: "$USERNAME", pwd: "$PASSWORD", roles: [ "readWrite" ] })
+  } else {
+    db.createUser({ user: "$USERNAME", pwd: "$PASSWORD", roles: [ "readWrite" ] })
+  }
+}
+quit()
+EOF
+  MONGO_SETUP_RETVAL="$?"
+  if [ "$MONGO_SETUP_RETVAL" -ne 0 ] ; then
+    echo -e "\nMongodb user setup failed." 1>&2
+    exitFail
+  fi
+  $THERMOSTAT_HOME/bin/thermostat storage --stop
+  MONGO_SETUP_RETVAL="$?"
+  if [ "$MONGO_SETUP_RETVAL" -ne 0 ] ; then
+    echo -e "\nMongodb user setup failed." 1>&2
+    exitFail
+  fi
+  touch "$USER_THERMOSTAT_HOME"/data/mongodb-user-done.stamp
+}
+
+doProceedLoop() {
+  DO_SETUP=1
+  while true; do
+    read -p "Ready to proceed? Please type 'yes' or 'no': " RESPONSE
+    if [ "x$RESPONSE" = "xyes" ]; then
+      break
+    elif [ "x$RESPONSE" = "xno" ]; then
+      DO_SETUP=0
+      break
+    else
+      echo "Unknown response. Please only type 'yes' or 'no'"
+    fi
+  done
+}
+
+displayThermostatBlurb 
+doProceedLoop
+
+if [ $DO_SETUP -eq 0 ]; then
+  echo "Exiting on user request. Bye!"
+  exit 0
+else
+  runSetup
+fi
