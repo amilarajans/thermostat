@@ -80,6 +80,7 @@
         <include>com.redhat.thermostat:thermostat-platform-swing-distribution</include>
         <include>com.redhat.thermostat:thermostat-dependency-tool-distribution</include>
         <include>com.redhat.thermostat:thermostat-gui-distribution</include>
+        <include>com.redhat.thermostat:thermostat-vm-shenandoah-distribution</include>
       </includes>
     </dependencySet>  
   </dependencySets>

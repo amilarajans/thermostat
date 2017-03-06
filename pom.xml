@@ -390,6 +390,7 @@
     <module>vm-io</module>
     <module>vm-jmx</module>
     <module>vm-profiler</module>
+    <module>vm-shenandoah</module>
     <module>notes</module>
     <module>numa</module>
     <module>vm-numa</module>
