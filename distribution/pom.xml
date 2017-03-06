@@ -751,6 +751,12 @@
     </dependency>
     <dependency>
       <groupId>com.redhat.thermostat</groupId>
+      <artifactId>thermostat-vm-shenandoah-distribution</artifactId>
+      <version>${project.version}</version>
+      <type>zip</type>
+    </dependency>
+    <dependency>
+      <groupId>com.redhat.thermostat</groupId>
       <artifactId>thermostat-web-endpoint-distribution</artifactId>
       <version>${project.version}</version>
       <type>zip</type>

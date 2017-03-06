@@ -151,6 +151,7 @@ class MongoConnection extends Connection {
         CodecRegistry arrayCodecRegistry = CodecRegistries.fromCodecs(
                                                 new DoubleArrayCodec(),
                                                 new IntegerArrayCodec(),
+                                                new LongArrayCodec(),
                                                 new StringArrayCodec());
         CodecRegistry ourCodecRegistry = CodecRegistries.fromRegistries(
                                                 defaultCodecRegistry,

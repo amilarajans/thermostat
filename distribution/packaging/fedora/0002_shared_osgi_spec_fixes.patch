@@ -2258,6 +2258,86 @@ diff --git a/vm-profiler/common/pom.xml b/vm-profiler/common/pom.xml
      </dependency>
      <dependency>
        <groupId>com.redhat.thermostat</groupId>
+diff --git a/vm-shenandoah/agent/pom.xml b/vm-shenandoah/agent/pom.xml
+--- a/vm-shenandoah/agent/pom.xml
++++ b/vm-shenandoah/agent/pom.xml
+@@ -82,14 +82,8 @@
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+-      <groupId>org.osgi</groupId>
+-      <artifactId>org.osgi.core</artifactId>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.osgi</groupId>
+-      <artifactId>org.osgi.compendium</artifactId>
+-      <scope>provided</scope>
++      <groupId>org.apache.felix</groupId>
++      <artifactId>org.apache.felix.framework</artifactId>
+     </dependency>
+     <dependency>
+       <groupId>com.redhat.thermostat</groupId>
+diff --git a/vm-shenandoah/client-core/pom.xml b/vm-shenandoah/client-core/pom.xml
+--- a/vm-shenandoah/client-core/pom.xml
++++ b/vm-shenandoah/client-core/pom.xml
+@@ -89,14 +89,8 @@
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+-      <groupId>org.osgi</groupId>
+-      <artifactId>org.osgi.core</artifactId>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.osgi</groupId>
+-      <artifactId>org.osgi.compendium</artifactId>
+-      <scope>provided</scope>
++      <groupId>org.apache.felix</groupId>
++      <artifactId>org.apache.felix.framework</artifactId>
+     </dependency>
+     <dependency>
+       <groupId>com.redhat.thermostat</groupId>
+diff --git a/vm-shenandoah/client-swing/pom.xml b/vm-shenandoah/client-swing/pom.xml
+--- a/vm-shenandoah/client-swing/pom.xml
++++ b/vm-shenandoah/client-swing/pom.xml
+@@ -99,14 +99,8 @@
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+-      <groupId>org.osgi</groupId>
+-      <artifactId>org.osgi.core</artifactId>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.osgi</groupId>
+-      <artifactId>org.osgi.compendium</artifactId>
+-      <scope>provided</scope>
++      <groupId>org.apache.felix</groupId>
++      <artifactId>org.apache.felix.framework</artifactId>
+     </dependency>
+     <dependency>
+       <groupId>com.redhat.thermostat</groupId>
+diff --git a/vm-shenandoah/common/pom.xml b/vm-shenandoah/common/pom.xml
+--- a/vm-shenandoah/common/pom.xml
++++ b/vm-shenandoah/common/pom.xml
+@@ -102,14 +102,8 @@
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+-      <groupId>org.osgi</groupId>
+-      <artifactId>org.osgi.core</artifactId>
+-      <scope>provided</scope>
+-    </dependency>
+-    <dependency>
+-      <groupId>org.osgi</groupId>
+-      <artifactId>org.osgi.compendium</artifactId>
+-      <scope>provided</scope>
++      <groupId>org.apache.felix</groupId>
++      <artifactId>org.apache.felix.framework</artifactId>
+     </dependency>
+     <dependency>
+       <groupId>com.redhat.thermostat</groupId>
 diff --git a/web/client/pom.xml b/web/client/pom.xml
 --- a/web/client/pom.xml
 +++ b/web/client/pom.xml

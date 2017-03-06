@@ -65,6 +65,7 @@
         <include>com.redhat.thermostat:thermostat-vm-profiler-distribution</include>
         <include>com.redhat.thermostat:thermostat-killvm-distribution</include>
         <include>com.redhat.thermostat:thermostat-vm-numa-distribution</include>
+        <include>com.redhat.thermostat:thermostat-vm-shenandoah-distribution</include>
       </includes>
     </dependencySet>  
   </dependencySets>
