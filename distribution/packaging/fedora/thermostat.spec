@@ -1174,6 +1174,7 @@ fi
 %{_datadir}/%{pkg_name}/plugins/vm-profiler
 %{_datadir}/%{pkg_name}/plugins/vm-find
 %{_datadir}/%{pkg_name}/plugins/vm-byteman
+%{_datadir}/%{pkg_name}/plugins/vm-shenandoah
 %{_datadir}/%{pkg_name}/plugins/dependency-analyzer
 %{_datadir}/%{pkg_name}/cache
 %{_datadir}/%{pkg_name}/data
