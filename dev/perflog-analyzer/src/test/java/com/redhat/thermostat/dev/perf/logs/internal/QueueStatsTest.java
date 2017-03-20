@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import com.redhat.thermostat.shared.config.OS;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -121,7 +122,7 @@ public class QueueStatsTest {
         PrintStream pStream = new PrintStream(baos);
         stats.printSummary(pStream);
         String summary = baos.toString();
-        assertEquals("Queue size stats (5 records): 12(max) 1(min) 5.60(avg)\n\n", summary);
+        assertEquals("Queue size stats (5 records): 12(max) 1(min) 5.60(avg)" + OS.EOL + OS.EOL, summary);
     }
     
     @Test
