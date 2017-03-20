@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import com.redhat.thermostat.shared.config.OS;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -222,12 +223,12 @@ public class StatementStatsTest {
         PrintStream pStream = new PrintStream(baos, false, "UTF-8");
         stats.setConfig(config);
         stats.printSummary(pStream);
-        String expected = "Statement statistics (6 records): 3 distinct statements (5 reads, 1 writes)\n" +
-                          "\n" +
-                          "Statement details (sorted by avg exec time):\n" +
-                          "Total #: 2, 300µs (min), 333µs (max), 316.50µs (avg), DESCRIPTOR: QUERY foo-bar WHERE 'x' = ?l\n" +
-                          "Total #: 3, 2ms (min), 120ms (max), 44.67ms (avg), DESCRIPTOR: QUERY foo WHERE 'a' = ?s\n" +
-                          "Total #: 1, 44ns (min), 44ns (max), 44.00ns (avg), DESCRIPTOR: ADD foo SET 'a' = ?s\n\n";
+        String expected = "Statement statistics (6 records): 3 distinct statements (5 reads, 1 writes)" + OS.EOL +
+                          OS.EOL +
+                          "Statement details (sorted by avg exec time):" + OS.EOL +
+                          "Total #: 2, 300µs (min), 333µs (max), 316.50µs (avg), DESCRIPTOR: QUERY foo-bar WHERE 'x' = ?l" + OS.EOL +
+                          "Total #: 3, 2ms (min), 120ms (max), 44.67ms (avg), DESCRIPTOR: QUERY foo WHERE 'a' = ?s" + OS.EOL +
+                          "Total #: 1, 44ns (min), 44ns (max), 44.00ns (avg), DESCRIPTOR: ADD foo SET 'a' = ?s" + OS.EOL + OS.EOL;
         String summary = baos.toString("UTF-8");
         assertEquals(expected, summary);
     }

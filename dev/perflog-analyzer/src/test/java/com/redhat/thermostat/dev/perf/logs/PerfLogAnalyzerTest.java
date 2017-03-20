@@ -44,6 +44,7 @@ import java.io.PrintStream;
 import org.junit.Test;
 
 import com.redhat.thermostat.dev.perf.logs.PerfLogAnalyzer;
+import com.redhat.thermostat.shared.config.OS;
 
 public class PerfLogAnalyzerTest {
 
@@ -60,11 +61,11 @@ public class PerfLogAnalyzerTest {
         
         String actual = baos.toString();
         StringBuilder builder = new StringBuilder();
-        builder.append("usage: java -cp thermostat-perflog-analyzer*.jar " + PerfLogAnalyzer.class.getName() + " [OPTIONS] <perflog-file>\n\n");
-        builder.append("  OPTIONS:\n");
-        builder.append("   --sort-by=<KEY>   <KEY> is one of: MIN, MAX, AVG, COUNT (AVG is default)\n");
-        builder.append("   --direction=<KEY>   <KEY> is one of: ASC, DSC (DSC is default)\n");
-        builder.append("   --show-backing   Shows stats analysis for backing storage (if any)\n");
+        builder.append("usage: java -cp thermostat-perflog-analyzer*.jar " + PerfLogAnalyzer.class.getName() + " [OPTIONS] <perflog-file>" + OS.EOL + OS.EOL);
+        builder.append("  OPTIONS:" + OS.EOL);
+        builder.append("   --sort-by=<KEY>   <KEY> is one of: MIN, MAX, AVG, COUNT (AVG is default)" + OS.EOL);
+        builder.append("   --direction=<KEY>   <KEY> is one of: ASC, DSC (DSC is default)" + OS.EOL);
+        builder.append("   --show-backing   Shows stats analysis for backing storage (if any)" + OS.EOL);
         String expected = builder.toString();
         assertEquals(expected, actual);
     }
