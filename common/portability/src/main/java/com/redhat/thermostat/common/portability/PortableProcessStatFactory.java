@@ -34,40 +34,12 @@
  * to do so, delete this exception statement from your version.
  */
 
-package com.redhat.thermostat.backend.system.internal;
+package com.redhat.thermostat.common.portability;
 
-import com.redhat.thermostat.common.portability.PortableHost;
-import com.redhat.thermostat.backend.system.internal.models.HostInfoBuilder;
-import com.redhat.thermostat.common.portability.PortableHostFactory;
-import com.redhat.thermostat.storage.core.WriterID;
-import com.redhat.thermostat.storage.model.HostInfo;
+public class PortableProcessStatFactory {
 
-/**
- * Build Host information via helper classes
- */
-class HostInfoBuilderImpl implements HostInfoBuilder {
-
-    private final WriterID writerID;
-    private final PortableHost helper;
-
-    HostInfoBuilderImpl(final WriterID writerID) {
-        this(writerID, PortableHostFactory.getInstance());
-    }
-
-    HostInfoBuilderImpl(final WriterID writerID, PortableHost helper) {
-        this.writerID = writerID;
-        this.helper = helper;
-    }
-
-    @Override
-    public HostInfo build() {
-        String wId = writerID.getWriterID();
-        return new HostInfo(wId,
-                helper.getHostName(),
-                helper.getOSName(),
-                helper.getOSVersion(),
-                helper.getCPUModel(),
-                helper.getCPUCount(),
-                helper.getTotalMemory());
+    public static PortableProcessStat build(int pid) {
+        return PortableProcessFactory.getInstance().getProcessStat(pid);
     }
 }
+

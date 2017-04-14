@@ -65,30 +65,4 @@ public class ProcessUserInfo {
     public String getUsername() {
         return username;
     }
-
-    public static ProcessUserInfoBuilder createBuilder(ProcDataSource source, UserNameUtil userNameUtil) {
-        final ProcessUserInfoBuilder builder;
-        if (OS.IS_LINUX) {
-            builder = new LinuxProcessUserInfoBuilderImpl(source, userNameUtil);
-        } else if (OS.IS_WINDOWS) {
-            builder = new WindowsUserInfoBuilderImpl();
-        } else if (OS.IS_MACOS) {
-            builder = new MacOSUserInfoBuilderImpl();
-        } else {
-            throw new UnimplementedError("ProcessUserInfo");
-        }
-        return builder;
-    }
-
-    public static ProcessUserInfoBuilder createBuilder() {
-        final ProcessUserInfoBuilder builder;
-        if (OS.IS_LINUX) {
-            builder = new LinuxProcessUserInfoBuilderImpl();
-        } else if (OS.IS_WINDOWS) {
-            builder = new WindowsUserInfoBuilderImpl();
-        } else {
-            builder = new MacOSUserInfoBuilderImpl();
-        }
-        return builder;
-    }
 }

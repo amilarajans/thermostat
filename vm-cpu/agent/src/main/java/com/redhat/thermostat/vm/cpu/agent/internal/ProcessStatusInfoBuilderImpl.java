@@ -36,7 +36,7 @@
 
 package com.redhat.thermostat.vm.cpu.agent.internal;
 
-import com.redhat.thermostat.common.portability.PortableProcessImpl;
+import com.redhat.thermostat.common.portability.PortableProcessFactory;
 import com.redhat.thermostat.common.portability.PortableProcessStat;
 
 /**
@@ -49,7 +49,7 @@ public class ProcessStatusInfoBuilderImpl implements ProcessStatusInfoBuilder {
 
     public ProcessStatusInfo build(int pid) {
 
-        final PortableProcessStat info =  PortableProcessImpl.getInstance().getProcessStat(pid);
+        final PortableProcessStat info =  PortableProcessFactory.getInstance().getProcessStat(pid);
 
         return info != null ? new ProcessStatusInfo(pid, info.getUserTime(), info.getKernelTime()) : null;
     }

@@ -34,40 +34,40 @@
  * to do so, delete this exception statement from your version.
  */
 
-package com.redhat.thermostat.backend.system.internal;
+package com.redhat.thermostat.common.portability;
 
-import com.redhat.thermostat.common.portability.PortableHost;
-import com.redhat.thermostat.backend.system.internal.models.HostInfoBuilder;
-import com.redhat.thermostat.common.portability.PortableHostFactory;
-import com.redhat.thermostat.storage.core.WriterID;
-import com.redhat.thermostat.storage.model.HostInfo;
+import com.redhat.thermostat.common.portability.internal.UnimplementedError;
+import com.redhat.thermostat.common.portability.internal.linux.LinuxProcessUserInfoBuilderImpl;
+import com.redhat.thermostat.common.portability.internal.macos.MacOSUserInfoBuilderImpl;
+import com.redhat.thermostat.common.portability.internal.windows.WindowsUserInfoBuilderImpl;
+import com.redhat.thermostat.common.portability.linux.ProcDataSource;
+import com.redhat.thermostat.shared.config.OS;
 
-/**
- * Build Host information via helper classes
- */
-class HostInfoBuilderImpl implements HostInfoBuilder {
+public class ProcessUserInfoBuilderFactory {
 
-    private final WriterID writerID;
-    private final PortableHost helper;
-
-    HostInfoBuilderImpl(final WriterID writerID) {
-        this(writerID, PortableHostFactory.getInstance());
+    public static ProcessUserInfoBuilder createBuilder(ProcDataSource source, UserNameUtil userNameUtil) {
+        final ProcessUserInfoBuilder builder;
+        if (OS.IS_LINUX) {
+            builder = new LinuxProcessUserInfoBuilderImpl(source, userNameUtil);
+        } else if (OS.IS_WINDOWS) {
+            builder = new WindowsUserInfoBuilderImpl();
+        } else if (OS.IS_MACOS) {
+            builder = new MacOSUserInfoBuilderImpl();
+        } else {
+            throw new UnimplementedError("ProcessUserInfo");
+        }
+        return builder;
     }
 
-    HostInfoBuilderImpl(final WriterID writerID, PortableHost helper) {
-        this.writerID = writerID;
-        this.helper = helper;
-    }
-
-    @Override
-    public HostInfo build() {
-        String wId = writerID.getWriterID();
-        return new HostInfo(wId,
-                helper.getHostName(),
-                helper.getOSName(),
-                helper.getOSVersion(),
-                helper.getCPUModel(),
-                helper.getCPUCount(),
-                helper.getTotalMemory());
+    public static ProcessUserInfoBuilder createBuilder() {
+        final ProcessUserInfoBuilder builder;
+        if (OS.IS_LINUX) {
+            builder = new LinuxProcessUserInfoBuilderImpl();
+        } else if (OS.IS_WINDOWS) {
+            builder = new WindowsUserInfoBuilderImpl();
+        } else {
+            builder = new MacOSUserInfoBuilderImpl();
+        }
+        return builder;
     }
 }
