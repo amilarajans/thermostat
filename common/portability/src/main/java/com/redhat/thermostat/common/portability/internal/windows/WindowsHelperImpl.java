@@ -37,6 +37,7 @@
 package com.redhat.thermostat.common.portability.internal.windows;
 
 import com.redhat.thermostat.common.portability.internal.PortableNativeLibraryLoader;
+import com.redhat.thermostat.common.portability.PortableHost;
 import com.redhat.thermostat.shared.config.OS;
 
 import java.nio.ByteBuffer;
@@ -44,7 +45,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.redhat.thermostat.common.portability.PortableHost.CPU_TIMES_SIZE;
 
 /**
  * Utility class to access Windows native code
@@ -267,7 +267,7 @@ public class WindowsHelperImpl extends PortableNativeLibraryLoader {
      * @return long[3] array of idle, system and user times (in ticks)
      */
     long[] getSystemTimes() {
-        final long times[] = new long[CPU_TIMES_SIZE];
+        final long times[] = new long[PortableHost.CPU_TIMES_SIZE];
         getSystemTimes0(times);
         return times;
     }
@@ -280,7 +280,7 @@ public class WindowsHelperImpl extends PortableNativeLibraryLoader {
         final int numProcessors = getCPUCount();
         final int[][] procs = new int[numProcessors][];
         for (int i=0; i<numProcessors; i++) {
-            final int times[] = new int[CPU_TIMES_SIZE];
+            final int times[] = new int[PortableHost.CPU_TIMES_SIZE];
             procs[i] = times;
         }
         getCPUUsagePercent0(procs);

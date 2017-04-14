@@ -54,7 +54,8 @@ public interface PortableHost {
 
     PortableMemoryStat getMemoryStat();
 
-    static final int CPU_TIMES_SIZE = 3;
+    // represents size of array with idle, system and user ticks or percentages
+    int CPU_TIMES_SIZE = 3;
 
     // returns an array (one row per CPU) of an array of ints (idle, system and user ticks)
     long[][] getCPUUsageTicks();
