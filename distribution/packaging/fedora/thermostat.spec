@@ -700,6 +700,7 @@ pushd common/portability
         -d target/classes \
          src/main/java/com/redhat/thermostat/common/portability/HostName.java \
          src/main/java/com/redhat/thermostat/common/portability/PortableHost.java \
+         src/main/java/com/redhat/thermostat/common/portability/PortableMemoryStat.java \
          src/main/java/com/redhat/thermostat/common/portability/UserNameUtil.java \
          src/main/java/com/redhat/thermostat/common/portability/UserNameLookupException.java \
          src/main/java/com/redhat/thermostat/common/portability/internal/PortableNativeLibraryLoader.java \
