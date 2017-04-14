@@ -34,40 +34,24 @@
  * to do so, delete this exception statement from your version.
  */
 
-package com.redhat.thermostat.backend.system.internal;
+package com.redhat.thermostat.common.portability;
 
-import com.redhat.thermostat.common.portability.PortableHost;
-import com.redhat.thermostat.backend.system.internal.models.HostInfoBuilder;
-import com.redhat.thermostat.common.portability.PortableHostFactory;
-import com.redhat.thermostat.storage.core.WriterID;
-import com.redhat.thermostat.storage.model.HostInfo;
+import com.redhat.thermostat.common.portability.internal.linux.LinuxPortableHostImpl;
+import com.redhat.thermostat.common.portability.internal.macos.MacOSHostImpl;
+import com.redhat.thermostat.common.portability.internal.windows.WindowsPortableHostImpl;
+import com.redhat.thermostat.shared.config.OS;
 
-/**
- * Build Host information via helper classes
- */
-class HostInfoBuilderImpl implements HostInfoBuilder {
+public class PortableHostFactory {
 
-    private final WriterID writerID;
-    private final PortableHost helper;
+    private static final PortableHost INSTANCE = createInstance();
 
-    HostInfoBuilderImpl(final WriterID writerID) {
-        this(writerID, PortableHostFactory.getInstance());
+    private static PortableHost createInstance() {
+        return OS.IS_LINUX ? LinuxPortableHostImpl.createInstance()
+                : OS.IS_WINDOWS ? WindowsPortableHostImpl.createInstance() : MacOSHostImpl.createInstance();
     }
 
-    HostInfoBuilderImpl(final WriterID writerID, PortableHost helper) {
-        this.writerID = writerID;
-        this.helper = helper;
-    }
-
-    @Override
-    public HostInfo build() {
-        String wId = writerID.getWriterID();
-        return new HostInfo(wId,
-                helper.getHostName(),
-                helper.getOSName(),
-                helper.getOSVersion(),
-                helper.getCPUModel(),
-                helper.getCPUCount(),
-                helper.getTotalMemory());
+    public static PortableHost getInstance() {
+        return INSTANCE;
     }
 }
+

@@ -36,8 +36,8 @@
 
 package com.redhat.thermostat.backend.system.internal;
 
-import com.redhat.thermostat.common.portability.ProcessUserInfo;
 import com.redhat.thermostat.common.portability.ProcessUserInfoBuilder;
+import com.redhat.thermostat.common.portability.ProcessUserInfoBuilderFactory;
 import com.redhat.thermostat.common.portability.UserNameUtil;
 import com.redhat.thermostat.backend.system.internal.models.HostInfoBuilder;
 import com.redhat.thermostat.backend.system.internal.models.InfoBuilderFactory;
@@ -62,6 +62,6 @@ public class InfoBuilderFactoryImpl implements InfoBuilderFactory {
     }
 
     public ProcessUserInfoBuilder createProcessUserInfoBuilder(final UserNameUtil userNameUtil) {
-        return ProcessUserInfo.createBuilder(new ProcDataSource(), userNameUtil);
+        return ProcessUserInfoBuilderFactory.createBuilder(new ProcDataSource(), userNameUtil);
     }
 }
