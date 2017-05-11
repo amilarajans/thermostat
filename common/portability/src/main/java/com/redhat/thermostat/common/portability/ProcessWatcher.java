@@ -36,18 +36,35 @@
 
 package com.redhat.thermostat.common.portability;
 
-import com.redhat.thermostat.common.portability.internal.PortableNativeLibraryLoader;
-import com.redhat.thermostat.common.portability.internal.PosixHelperImpl;
+public abstract class ProcessWatcher extends Thread {
 
-/**
- * Finds the current host name without doing a DNS lookup
- */
-public class HostName extends PortableNativeLibraryLoader {
+    private final int pidToWatch;
+    private final long sleepTimeMs;
+    private PortableProcess processChecker = PortableProcessFactory.getInstance();
 
-    private static PosixHelperImpl helper = new PosixHelperImpl();
-    
-    public static String getLocalHostName() {
-        return helper.getLocalHostName();
+    protected ProcessWatcher(int pid, long sleepTimeMs) {
+        this.pidToWatch = pid;
+        this.sleepTimeMs = sleepTimeMs;
+        setName("process watcher");
+        setDaemon(true);
     }
-}
 
+    public void run() {
+        boolean parentIsRunning = true;
+        while (parentIsRunning) {
+            parentIsRunning = processChecker.exists(pidToWatch);
+            if (parentIsRunning) {
+                tick();
+                try {
+                    Thread.sleep(sleepTimeMs);
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
+        onProcessExit();
+    }
+
+    public void tick() {}
+
+    abstract public void onProcessExit();
+}
