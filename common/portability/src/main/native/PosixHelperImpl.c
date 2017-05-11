@@ -34,20 +34,39 @@
  * to do so, delete this exception statement from your version.
  */
 
-package com.redhat.thermostat.common.portability;
+#include "com_redhat_thermostat_common_portability_internal_PosixHelperImpl.h"
 
-import com.redhat.thermostat.common.portability.internal.PortableNativeLibraryLoader;
-import com.redhat.thermostat.common.portability.internal.PosixHelperImpl;
+#include <jni.h>
+#include <unistd.h>
+#include <string.h>
 
-/**
- * Finds the current host name without doing a DNS lookup
- */
-public class HostName extends PortableNativeLibraryLoader {
+#if !defined(_WIN32)
+# include <netdb.h>
+#else // windows
+# include <winsock2.h>
+#endif
 
-    private static PosixHelperImpl helper = new PosixHelperImpl();
-    
-    public static String getLocalHostName() {
-        return helper.getLocalHostName();
+#ifndef NI_MAXHOST
+#define NI_MAXHOST 1025
+#endif /* NI_MAXHOST */
+
+JNIEXPORT jstring JNICALL
+Java_com_redhat_thermostat_common_portability_internal_PosixHelperImpl_getHostName0
+  (JNIEnv *env, jclass HostNameClass)
+{
+    char hostname[NI_MAXHOST];
+    memset(hostname, 0, sizeof(hostname));
+
+    if (gethostname(hostname,  sizeof(hostname)) == 0) {
+        return (*env)->NewStringUTF(env, hostname);
     }
+    return NULL;
 }
 
+
+JNIEXPORT jint JNICALL
+Java_com_redhat_thermostat_common_portability_internal_PosixHelperImpl_getCurrentProcessID0
+  (JNIEnv *env, jclass posixHelperClass)
+{
+    return (jint)getpid();
+}

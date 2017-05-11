@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.redhat.thermostat.common.portability.PortableProcessFactory;
 import org.apache.commons.codec.binary.Base64;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
@@ -230,7 +231,7 @@ class CommandChannelDelegate implements ConfigurationServer, ThermostatIPCCallba
                 ? new String[]{ binPath.getAbsolutePath() + File.separator + CMD_NAME, hostname,
                                 String.valueOf(port), ipcConfig.getAbsolutePath() }
                 : new String[] { "cmd", "/c", binPath.getAbsolutePath() + File.separator + CMD_NAME + ".cmd", hostname,
-                                String.valueOf(port), ipcConfig.getAbsolutePath() };
+                                String.valueOf(port), ipcConfig.getAbsolutePath(), "" + PortableProcessFactory.getInstance().getCurrentProcessPid()};
 
         ProcessBuilder builder = new ProcessBuilder(processArgs);
         // This has the problem of some messages/Exceptions not

@@ -930,6 +930,30 @@ JNIEXPORT jlong JNICALL Java_com_redhat_thermostat_common_portability_internal_w
 
 /*
  * Class:     com_redhat_thermostat_common_portability_internal_windows_WindowsHelperImpl
+ * Method:    exists0
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_redhat_thermostat_common_portability_internal_windows_WindowsHelperImpl_exists0
+  (JNIEnv *env, jclass winHelperClass, jint pid) {
+
+    if (pid == 0)
+        return 1;
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (hProcess == 0)
+        return 0;
+    LPDWORD ret = 0;
+    int rc = GetExitCodeProcess(hProcess, &ret);
+    CloseHandle(hProcess);
+    if (rc) {
+        return ret == STILL_ACTIVE;
+    }
+    else {
+        return 0;
+    }
+}
+
+/*
+ * Class:     com_redhat_thermostat_common_portability_internal_windows_WindowsHelperImpl
  * Method:    closeHandle0
  * Signature: (J)V
  */

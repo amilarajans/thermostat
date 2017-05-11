@@ -81,6 +81,8 @@ public class StorageTest extends IntegrationTest {
         Spawn service = spawnResult.spawn;
 
         try {
+
+
             service.expect("Agent started.");
             // Give agent some time to startup before killing it
             Thread.sleep(2000l);
